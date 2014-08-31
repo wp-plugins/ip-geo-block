@@ -12,10 +12,13 @@
 class IP_Geo_Block {
 
 	/**
-	 * Plugin version, used for cache-busting of style and script file references.
+	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '1.0.3';
+	const VERSION = '1.1.0';
+	const TEXT_DOMAIN = 'ip-geo-block';
+	const PLUGIN_SLUG = 'ip-geo-block';
+	const CACHE_KEY   = 'ip-geo-block-cache';
 
 	/**
 	 * Instance of this class.
@@ -24,11 +27,9 @@ class IP_Geo_Block {
 	protected static $instance = null;
 
 	/**
-	 * Unique identifier for this plugin.
+	 * Option table accessor by name
 	 *
 	 */
-	protected $text_domain = 'ip-geo-block';
-	protected $plugin_slug = 'ip-geo-block';
 	protected $option_name = array();
 
 	/**
@@ -39,7 +40,8 @@ class IP_Geo_Block {
 
 		// settings (should be read on every page that has comment form)
 		'ip_geo_block_settings' => array(
-			'version'         => '1.0',   // Version of option data
+			'version'         => '1.1',   // Version of option data
+			// from version 1.0
 			'order'           => 0,       // Next order of provider (spare for future)
 			'providers'       => array(), // List of providers and API keys
 			'comment'         => array(   // Message on the comment form
@@ -57,6 +59,9 @@ class IP_Geo_Block {
 				'path_db'     => '',      // Path to IP2Location DB
 				'path_class'  => '',      // Path to IP2Location class file
 			),
+			// from version 1.1
+			'cache_hold'      => 10,      // Max entries in cache
+			'cache_time'      => HOUR_IN_SECONDS, // @since 3.5
 		),
 
 		// statistics (should be read when comment has posted)
@@ -111,9 +116,7 @@ class IP_Geo_Block {
 	 * Return the plugin unique value.
 	 *
 	 */
-	public function get_text_domain() { return $this->text_domain;  }
-	public function get_plugin_slug() { return $this->plugin_slug;  }
-	public function get_option_keys() { return self::$option_keys;  }
+	public function get_option_keys() { return self::$option_keys; }
 
 	/**
 	 * Return an instance of this class.
@@ -162,14 +165,17 @@ class IP_Geo_Block {
 		$opts = get_option( $name[0] );
 
 		if ( FALSE !== $opts ) {
-			if ( version_compare( $opts['version'], '1.0' ) < 0 ) {
+			if ( version_compare( $opts['version'], '1.1' ) < 0 ) {
+				$opts['version'   ] = self::$option_table[ $name[0] ]['version'   ];
+				$opts['cache_hold'] = self::$option_table[ $name[0] ]['cache_hold'];
+				$opts['cache_time'] = self::$option_table[ $name[0] ]['cache_time'];
 			}
 			$opts['ip2location'] = $ip2;
 			update_option( $name[0], $opts );
 		} else {
 			self::$option_table[ $name[0] ]['ip2location'] = $ip2;
 			add_option( $name[0], self::$option_table[ $name[0] ], '', 'yes' );
-			add_option( $name[1], self::$option_table[ $name[1] ], '', 'no' );
+			add_option( $name[1], self::$option_table[ $name[1] ], '', 'no'  );
 		}
 	}
 
@@ -192,6 +198,7 @@ class IP_Geo_Block {
 			foreach ( $name as $key ) {
 				delete_option( $key ); // @since 1.2.0
 			}
+			delete_transient( self::CACHE_KEY ); // @since 2.8
 		}
 	}
 
@@ -200,7 +207,7 @@ class IP_Geo_Block {
 	 *
 	 */
 	public function load_plugin_textdomain() {
-		load_plugin_textdomain( $this->text_domain, FALSE, basename( plugin_dir_path( dirname( __FILE__ ) ) ) . '/languages/' );
+		load_plugin_textdomain( self::TEXT_DOMAIN, FALSE, basename( plugin_dir_path( dirname( __FILE__ ) ) ) . '/languages/' );
 	}
 
 	/**
@@ -210,19 +217,7 @@ class IP_Geo_Block {
 	public function comment_form_message( $id ) {
 		$msg = get_option( $this->option_name['settings'] );
 		$msg = htmlspecialchars( $msg['comment']['msg'] );
-		if ( $msg ) echo '<p id="', $this->plugin_slug, '-msg">', $msg, '</p>';
-	}
-
-	/**
-	 * Set User Agent strings for WP_Http
-	 * @see https://developer.wordpress.org/reference/classes/wp_http/request/
-	 */
-	public function set_user_agent( $headers ) {
-		global $wp_version;
-		$headers['user-agent'] = apply_filters(
-			'ip-geo-block-headers-useragent',
-			'WordPress/' . $wp_version . '; ' . $this->plugin_slug . VERSION
-		);
+		if ( $msg ) echo '<p id="', self::PLUGIN_SLUG, '-msg">', $msg, '</p>';
 	}
 
 	/**
@@ -230,9 +225,11 @@ class IP_Geo_Block {
 	 *
 	 */
 	public function check_location( $commentdata, $settings ) {
+		global $wp_version;
+
 		// if the post has been already marked as 'blocked' then return
-		if ( isset( $commentdata[ $this->plugin_slug ] ) &&
-			'blocked' === $commentdata[ $this->plugin_slug ]['result'] ) {
+		if ( isset( $commentdata[ self::PLUGIN_SLUG ] ) &&
+			'blocked' === $commentdata[ self::PLUGIN_SLUG ]['result'] ) {
 			return $commentdata;
 		}
 
@@ -256,13 +253,27 @@ class IP_Geo_Block {
 		if ( class_exists( 'IP2Location' ) )
 			array_unshift( $list, 'IP2Location' );
 
+		// Add Cache
+		array_unshift( $list, 'Cache' );
+
 		// matching rule
 		$rule  = $settings['matching_rule'];
 		$white = $settings['white_list'];
 		$black = $settings['black_list'];
 
 		// get ip address
-		$ip = apply_filters( $this->plugin_slug . '-addr', $_SERVER['REMOTE_ADDR'] );
+		$ip = apply_filters( self::PLUGIN_SLUG . '-addr', $_SERVER['REMOTE_ADDR'] );
+
+		// set arguments for wp_remote_get()
+		// http://codex.wordpress.org/Function_Reference/wp_remote_get
+		$name = self::PLUGIN_SLUG;
+		$args = apply_filters(
+			$name . '-headers',
+			array(
+				'timeout' => $settings['timeout'],
+				'user-agent' => "WordPress/$wp_version; $name " . self::VERSION
+			)
+		);
 
 		foreach ( $list as $provider ) {
 			$name = IP_Geo_Block_API::get_class_name( $provider );
@@ -273,17 +284,20 @@ class IP_Geo_Block {
 				// get country code
 				$key = ! empty( $settings['providers'][ $provider ] );
 				$geo = new $name( $key ? $settings['providers'][ $provider ] : NULL );
-				$code = strtoupper( $geo->get_country( $ip, $settings['timeout'] ) );
-
-				// process time
-				$time = microtime( TRUE ) - $time;
+				$code = strtoupper( $geo->get_country( $ip, $args ) );
 			} else {
 				$code = NULL;
 			}
 
 			if ( $code ) {
+				// update cache
+				IP_Geo_Block_API_Cache::update_cache( $ip, $code, $settings );
+
+				// process time
+				$time = microtime( TRUE ) - $time;
+
 				// for update_statistics()
-				$commentdata[ $this->plugin_slug ] = array(
+				$commentdata[ self::PLUGIN_SLUG ] = array(
 					'ip' => $ip,
 					'time' => $time,
 					'code' => $code,
@@ -293,20 +307,20 @@ class IP_Geo_Block {
 				// It may not be a spam
 				if ( 0 == $rule && FALSE !== strpos( $white, $code ) ||
 				     1 == $rule && FALSE === strpos( $black, $code ) ) {
-					$commentdata[ $this->plugin_slug ] += array( 'result' => 'passed' );
+					$commentdata[ self::PLUGIN_SLUG ] += array( 'result' => 'passed' );
 					return $commentdata;
 				}
 
 				// It could be a spam
 				else {
-					$commentdata[ $this->plugin_slug ] += array( 'result' => 'blocked');
+					$commentdata[ self::PLUGIN_SLUG ] += array( 'result' => 'blocked');
 					return $commentdata;
 				}
 			}
 		}
 
 		// if ip address is unknown then pass through
-		$commentdata[ $this->plugin_slug ] = array( 'result' => 'unknown' );
+		$commentdata[ self::PLUGIN_SLUG ] = array( 'result' => 'unknown' );
 		return $commentdata;
 	}
 
@@ -315,7 +329,7 @@ class IP_Geo_Block {
 	 *
 	 */
 	public function update_statistics( $commentdata ) {
-		$validate = $commentdata[ $this->plugin_slug ];
+		$validate = $commentdata[ self::PLUGIN_SLUG ];
 		$statistics = get_option( $this->option_name['statistics'] );
 
 		$result = isset( $validate['result'] ) ? $validate['result'] : 'passed';
@@ -351,7 +365,7 @@ class IP_Geo_Block {
 			$statistics['countries'][ $country ] = intval( $stat[ $country ] ) + 1;
 		}
 
-		unset( $commentdata[ $this->plugin_slug ] );
+		unset( $commentdata[ self::PLUGIN_SLUG ] );
 		update_option( $this->option_name['statistics'], $statistics );
 	}
 
@@ -365,20 +379,18 @@ class IP_Geo_Block {
 			return $commentdata;
 
 		// register the validation function
-		$code = $this->plugin_slug;
-//		add_filter( "${code}-headers",  array( $this, 'set_user_agent' ), 10, 1 );
-		add_filter( "${code}-validate", array( $this, 'check_location' ), 10, 2 );
+		add_filter( self::PLUGIN_SLUG . '-validate', array( $this, 'check_location' ), 10, 2 );
 
 		// validate and update statistics
 		$settings = get_option( $this->option_name['settings'] );
-		$result = apply_filters( "${code}-validate", $commentdata, $settings );
+		$result = apply_filters( self::PLUGIN_SLUG . '-validate', $commentdata, $settings );
 
 		// update statistics
 		if ( $settings['save_statistics'] )
 			$this->update_statistics( $result );
 
 		// after all filters applied, check whether the result is end in 'blocked'.
-		if ( ! isset( $result[ $code ] ) || 'blocked' !== $result[ $code ]['result'] ) {
+		if ( ! isset( $result[ self::PLUGIN_SLUG ] ) || 'blocked' !== $result[ self::PLUGIN_SLUG ]['result'] ) {
 			return $commentdata;
 		}
 
@@ -400,7 +412,7 @@ class IP_Geo_Block {
 
 		// 4xx Client Error
 		else if ( 400 <= $code && $code < 500 ) {
-			wp_die( __( 'Sorry, your comment cannot be accepted.', $this->text_domain ),
+			wp_die( __( 'Sorry, your comment cannot be accepted.', self::TEXT_DOMAIN ),
 				'Error', array( 'response' => $code, 'back_link' => TRUE ) );
 		}
 
