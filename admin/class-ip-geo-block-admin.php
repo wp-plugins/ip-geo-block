@@ -227,7 +227,7 @@ class IP_Geo_Block_Admin {
 	 *
 	 */
 	public function register_admin_settings() {
-		require_once( IP_GEO_BLOCK_PATH . '/classes/class-ip-geo-block-api.php' );
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
 
 		$tab = isset( $_GET['tab'] ) ? intval( $_GET['tab'] ) : 0;
 		$tab = min( 3, max( 0, $tab ) );
@@ -335,7 +335,7 @@ class IP_Geo_Block_Admin {
 						__( 'Top',    IP_GEO_BLOCK::TEXT_DOMAIN ) => 1,
 						__( 'Bottom', IP_GEO_BLOCK::TEXT_DOMAIN ) => 2,
 					),
-					'text' => $options[ $field ]['msg'],
+					'text' => $options[ $field ]['msg'], // sanitized at 'comment-msg'
 				)
 			);
 
@@ -534,7 +534,7 @@ class IP_Geo_Block_Admin {
 					'type' => 'html',
 					'option' => $option_name,
 					'field' => $field,
-					'value' => $options[ $field ],
+					'value' => esc_html( $options[ $field ] ),
 				)
 			);
 
@@ -549,7 +549,7 @@ class IP_Geo_Block_Admin {
 					'type' => 'html',
 					'option' => $option_name,
 					'field' => $field,
-					'value' => $options[ $field ],
+					'value' => esc_html( $options[ $field ] ),
 				)
 			);
 
@@ -564,14 +564,14 @@ class IP_Geo_Block_Admin {
 					'type' => 'html',
 					'option' => $option_name,
 					'field' => $field,
-					'value' => $options[ $field ],
+					'value' => esc_html( $options[ $field ] ),
 				)
 			);
 
 			$field = 'countries';
 			$html = "<ul class=\"${option_slug}-${field}\">";
 			foreach ( $options['countries'] as $key => $val ) {
-				$html .= sprintf( "<li>%2s:%5d</li>", $key, $val );
+				$html .= sprintf( "<li>%2s:%5d</li>", esc_html( $key ), $val );
 			}
 			$html .= "</ul>";
 
@@ -602,8 +602,8 @@ class IP_Geo_Block_Admin {
 					'field' => $field,
 					'value' => "<table class=\"${option_slug}-${field}\">" .
 						"<thead><tr><th>IPv4</th><th>IPv6</th></tr></thead><tbody>" .
-						"<td>" . $options['IPv4'] . "</td>" .
-						"<td>" . $options['IPv6'] . "</td></tbody></table>",
+						"<td>" . esc_html( $options['IPv4'] ) . "</td>" .
+						"<td>" . esc_html( $options['IPv6'] ) . "</td></tbody></table>",
 				)
 			);
 
@@ -615,7 +615,7 @@ class IP_Geo_Block_Admin {
 			$html .= "</tr></thead><tbody>";
 
 			foreach ( $options['providers'] as $key => $val ) {
-				$html .= "<tr><td>$key</td>";
+				$html .= "<tr><td>" . esc_html( $key ) . "</td>";
 				$html .= "<td>" . sprintf( "%5d", $val['count'] ) . "</td><td>";
 				$html .= sprintf( "%5d", 1000.0 * $val['time'] / $val['count'] );
 				$html .= "</td></tr>";
@@ -638,19 +638,20 @@ class IP_Geo_Block_Admin {
 
 			$field = 'caches';
 			$html = "<table class=\"${option_slug}-${field}\"><thead><tr>";
-			$html .= "<th>" . __( 'IP Address', IP_GEO_BLOCK::TEXT_DOMAIN ) . "</th>";
+			$html .= "<th>" . __( 'IP address', IP_GEO_BLOCK::TEXT_DOMAIN ) . "</th>";
 			$html .= "<th>" . __( 'Country code', IP_GEO_BLOCK::TEXT_DOMAIN ) . "</th>";
-			$html .= "<th>" . __( 'Elapsed time [sec]', IP_GEO_BLOCK::TEXT_DOMAIN ) . "</th>";
+			$html .= "<th>" . __( 'Elapsed [sec] / Calls', IP_GEO_BLOCK::TEXT_DOMAIN ) . "</th>";
 			$html .= "</tr></thead><tbody>";
 
 			$transient = get_transient( IP_Geo_Block::CACHE_KEY );
 			if ( $transient ) {
 				$time = time();
 				foreach ( $transient as $key => $val ) {
-					$html .= "<tr><td>$key</td>";
-					$html .= "<td>" . $val['code'] . "</td>";
-					$html .= "<td>" . ($time - $val['time']) . "</td>";
-					$html .= "</tr>";
+					$html .= "<tr><td>" . esc_html( $key ) . "</td>";
+					$html .= "<td>" . esc_html( $val['code'] ) . "</td>";
+					$html .= "<td>" . intval( $time - $val['time'] ) . " / ";
+					$html .= ! empty( $val['call'] ) ? intval( $val['call'] ) : '-';
+					$html .= "</td></tr>";
 				}
 			}
 			$html .= "</tbody></table>";
@@ -712,7 +713,7 @@ class IP_Geo_Block_Admin {
 
 			// make providers list
 			$list = array();
-			$providers = IP_Geo_Block_Provider::get_providers( 'key', TRUE, TRUE );
+			$providers = IP_Geo_Block_Provider::get_providers( 'key' );
 
 			foreach ( $providers as $provider => $key ) {
 				if ( ! is_string( $key ) ||
@@ -923,7 +924,7 @@ class IP_Geo_Block_Admin {
 		$message = __( 'successfully updated', IP_GEO_BLOCK::TEXT_DOMAIN );
 		$status = 'updated';
 
-		require_once( IP_GEO_BLOCK_PATH . '/classes/class-ip-geo-block-api.php' );
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
 		$providers = IP_Geo_Block_Provider::get_providers( 'key' );
 
 		/**
@@ -973,6 +974,8 @@ class IP_Geo_Block_Admin {
 				case 'comment':
 					$output[ $key ]['pos'] = intval( $input[ $key ]['pos'] );
 					$output[ $key ]['msg'] = sanitize_text_field( $input[ $key ]['msg'] );
+//					global $allowedtags;
+//					$output[ $key ]['msg'] = wp_kses( $input[ $key ]['msg'], $allowedtags );
 					break;
 
 				case 'matching_rule':
@@ -1033,7 +1036,7 @@ class IP_Geo_Block_Admin {
 	 * @link http://codex.wordpress.org/Function_Reference/check_ajax_referer
 	 */
 	public function admin_ajax_callback() {
-		require_once( IP_GEO_BLOCK_PATH . '/classes/class-ip-geo-block-api.php' );
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
 
 		// Check request origin, nonce, capability.
 		if ( ! check_admin_referer( $this->get_ajax_action(), 'nonce' ) || // @since 2.5
@@ -1053,12 +1056,11 @@ class IP_Geo_Block_Admin {
 
 				if ( $name ) {
 					$options = get_option( $this->option_name['settings'] );
-					global $wp_version;
 					$args = apply_filters(
 						IP_GEO_BLOCK::PLUGIN_SLUG . '-headers',
 						array(
 							'timeout' => $options['timeout'],
-							'user-agent' => "WordPress/$wp_version; " . IP_GEO_BLOCK::PLUGIN_SLUG . ' ' . IP_Geo_Block::VERSION
+							'user-agent' => IP_Geo_Block::get_user_agent(),
 						)
 					);
 					$key = ! empty( $options['providers'][ $provider ] );
