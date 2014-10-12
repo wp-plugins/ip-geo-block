@@ -21,6 +21,37 @@
 		});
 	}
 
+	// Download from Maxmind server
+	function ajax_update_database() {
+		$('#ip-geo-block-download').addClass('ip-geo-block-loading');
+
+		$.post(IP_GEO_BLOCK.url, {
+			action: IP_GEO_BLOCK.action,
+			nonce: IP_GEO_BLOCK.nonce,
+			download: 'maxmind'
+		})
+
+		.done(function (data, textStatus, jqXHR) {
+			for (var key in data) { // key: ipv4, ipv6
+				if (data[key].filename) {
+					$('#ip_geo_block_settings_maxmind_' + key + '_path').val(sanitize(data[key].filename));
+				}
+				if (data[key].message) {
+					$('#ip_geo_block_' + key).text(sanitize(data[key].message));
+				}
+			}
+		})
+
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			alert('fail: ' + jqXHR.responseText);
+		})
+
+		.complete(function () {
+			$('#ip-geo-block-download').removeClass('ip-geo-block-loading');
+		});
+	}
+
+	// Search Geolocation
 	function ajax_get_location(service, ip) {
 		$('#ip-geo-block-loading').addClass('ip-geo-block-loading');
 
@@ -43,7 +74,7 @@
 			}
 			info += '</ul>';
 
-			$("#ip-geo-block-map").GmapRS('addMarker', {
+			$('#ip-geo-block-map').GmapRS('addMarker', {
 				latitude: data.latitude || 0,
 				longitude: data.longitude || 0,
 				title: ip,
@@ -62,6 +93,7 @@
 		});
 	}
 
+	// Clear statistics
 	function ajax_clear_statistics() {
 		$('#ip-geo-block-loading').addClass('ip-geo-block-loading');
 
@@ -85,6 +117,15 @@
 	}
 
 	$(function () {
+		// Inhibit to submit by return key
+		$('#ip-geo-block-inhibit').on('submit', function () {
+			return false;
+		});
+
+		// Update database
+		$('#update').on('click', function (event) {
+			ajax_update_database();
+		});
 
 		// Statistics
 		$('#clear_statistics').on('click', function (event) {
@@ -95,7 +136,7 @@
 		});
 
 		// Initialize map if exists
-		$("#ip-geo-block-map").each(function () {
+		$('#ip-geo-block-map').each(function () {
 			$(this).GmapRS();
 		});
 

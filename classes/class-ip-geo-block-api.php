@@ -26,6 +26,7 @@ abstract class IP_Geo_Block_API {
 	/**
 	 * These values must be instantiated in child class
 	 *
+	 *//*
 	protected $api_type = IP_GEO_BLOCK_API_TYPE_[IPV4 | IPV6 | BOTH];
 	protected $api_template = array(
 		'api_key' => '', // %API_KEY%
@@ -42,8 +43,7 @@ abstract class IP_Geo_Block_API {
 		'cityName'     => '',
 		'latitude'     => '',
 		'longitude'    => '',
-	);
-	*/
+	);*/
 
 	/**
 	 * Constructer & Destructer
@@ -156,10 +156,12 @@ abstract class IP_Geo_Block_API {
 		$res = $this->get_location( $ip, $args );
 
 		// if country code is '-' or 'UNDEFINED' then error.
-		if ( ! empty( $res ) && ! empty( $res['countryCode'] ) )
-			return strlen( $res['countryCode'] ) === 2 ? $res['countryCode'] : NULL;
-		else
+		if ( $res && ! empty( $res['countryCode'] ) ) {
+			$len = strlen( $res['countryCode'] );
+			return 2 <= $len && $len <= 3 ? substr( $res['countryCode'], 0, 2 ) : NULL;
+		} else {
 			return NULL;
+		}
 	}
 
 	/**
@@ -257,7 +259,7 @@ class IP_Geo_Block_API_ipinfoio extends IP_Geo_Block_API {
  * Term of use : http://www.telize.com/disclaimer/
  * Licence fee : free for everyone to use
  * Rate limit  : none
- * Sample URL  : http://www.telize.com/geoip/2a00:1450:400c:c00::6a
+ * Sample URL  : http://www.telize.com/geoip/2a00:1210:fffe:200::1
  * Input type  : IP address (IPv4, IPv6)
  * Output type : json, jsonp
  */
@@ -281,36 +283,6 @@ class IP_Geo_Block_API_Telize extends IP_Geo_Block_API {
 }
 
 /**
- * Class for IPtoLatLng
- *
- * URL         : http://www.iptolatlng.com/
- * Term of use : 
- * Licence fee : free
- * Rate limit  : none
- * Sample URL  : http://www.iptolatlng.com?ip=2a00:1450:400c:c00::6a
- * Input type  : IP address (IPv4, IPv6) / domain name
- * Output type : json
- */
-class IP_Geo_Block_API_IPtoLatLng extends IP_Geo_Block_API {
-	protected $api_type = IP_GEO_BLOCK_API_TYPE_BOTH;
-	protected $api_template = array(
-		'api_key' => '',
-		'format'  => 'json',
-		'option'  => '',
-		'ip'      => '',
-	);
-	protected $url_template = 'http://www.iptolatlng.com/?type=%API_FORMAT%&ip=%API_IP%';
-	protected $transform_table = array(
-		'countryCode' => 'country',
-		'countryName' => 'countryFullName',
-		'regionName'  => 'stateFullName',
-		'cityName'    => 'city',
-		'latitude'    => 'lat',
-		'longitude'   => 'lng',
-	);
-}
-
-/**
  * Class for IP-Json
  *
  * URL         : http://ip-json.rhcloud.com/
@@ -318,7 +290,7 @@ class IP_Geo_Block_API_IPtoLatLng extends IP_Geo_Block_API {
  * Licence fee : free
  * Rate limit  : 
  * Sample URL  : http://ip-json.rhcloud.com/xml/124.83.187.140
- * Sample URL  : http://ip-json.rhcloud.com/v6/2a00:1450:400c:c00::6a
+ * Sample URL  : http://ip-json.rhcloud.com/v6/2a00:1210:fffe:200::1
  * Input type  : IP address (IPv4, IPv6) / domain name
  * Output type : json, xml, csv
  */
@@ -380,44 +352,13 @@ class IP_Geo_Block_API_Xhanch extends IP_Geo_Block_API {
 }
 
 /**
- * Class for mshd.net
- *
- * URL         : http://mshd.net/documentation/geoip
- * Term of use : http://mshd.net/disclaimer
- * Licence fee : 
- * Rate limit  : 
- * Sample URL  : http://mshd.net/api/geoip?ip=2a00:1450:400c:c00::6a&output=json
- * Input type  : IP address (IPv4, IPv6)
- * Output type : json, php
- */
-class IP_Geo_Block_API_mshdnet extends IP_Geo_Block_API {
-	protected $api_type = IP_GEO_BLOCK_API_TYPE_BOTH;
-	protected $api_template = array(
-		'api_key' => '',
-		'format'  => 'json',
-		'option'  => '',
-		'ip'      => '',
-	);
-	protected $url_template = 'http://mshd.net/api/geoip?ip=%API_IP%&output=%API_FORMAT%';
-	protected $transform_table = array(
-		'errorMessage' => 'error',
-		'countryCode'  => 'country_code',
-		'countryName'  => 'country_name',
-		'regionName'   => 'region_name',
-		'cityName'     => 'city_name',
-		'latitude'     => 'latitude',
-		'longitude'    => 'longitude',
-	);
-}
-
-/**
  * Class for geoPlugin
  *
  * URL         : http://www.geoplugin.com/
  * Term of use : http://www.geoplugin.com/whyregister
  * Licence fee : free (need an attribution link)
  * Rate limit  : 120 lookups per minute
- * Sample URL  : http://www.geoplugin.net/json.gp?ip=2a00:1450:400c:c00::6a
+ * Sample URL  : http://www.geoplugin.net/json.gp?ip=2a00:1210:fffe:200::1
  * Input type  : IP address (IPv4, IPv6)
  * Output type : json, xml, php, etc
  */
@@ -447,13 +388,13 @@ class IP_Geo_Block_API_geoPlugin extends IP_Geo_Block_API {
  * Term of use : http://ip-api.com/docs/#usage_limits
  * Licence fee : free for non-commercial use
  * Rate limit  : 240 requests per minute
- * Sample URL  : http://ip-api.com/json/2a00:1450:400c:c00::6a
+ * Sample URL  : http://ip-api.com/json/2a00:1210:fffe:200::1
  * Sample URL  : http://ip-api.com/xml/yahoo.co.jp
  * Input type  : IP address (IPv4, IPv6 with limited coverage) / domain name
  * Output type : json, xml
  */
 class IP_Geo_Block_API_ipapicom extends IP_Geo_Block_API {
-	protected $api_type = IP_GEO_BLOCK_API_TYPE_BOTH;
+	protected $api_type = IP_GEO_BLOCK_API_TYPE_IPV4;
 	protected $api_template = array(
 		'api_key' => '',
 		'format'  => 'json',
@@ -509,6 +450,26 @@ class IP_Geo_Block_API_IPInfoDB extends IP_Geo_Block_API {
 }
 
 /**
+ * Check if internal databases are available
+ */
+if ( function_exists( 'get_option' ) ) {
+	$options = get_option( 'ip_geo_block_settings' );
+
+	// IP2Location
+	$path = $options['ip2location']['ipv4_path'];
+	$path = apply_filters( IP_Geo_Block::PLUGIN_SLUG . '-ip2location-path', $path );
+	if ( file_exists( $path ) )
+		define( 'IP_GEO_BLOCK_IP2LOC_IPV4', $path );
+
+	// Maxmind
+	if ( file_exists( $options['maxmind']['ipv4_path'] ) &&
+	     file_exists( $options['maxmind']['ipv6_path'] ) ) {
+		define( 'IP_GEO_BLOCK_MAXMIND_IPV4', $options['maxmind']['ipv4_path'] );
+		define( 'IP_GEO_BLOCK_MAXMIND_IPV6', $options['maxmind']['ipv6_path'] );
+	}
+}
+
+/**
  * Class for IP2Location
  *
  * URL         : http://www.ip2location.com/
@@ -517,17 +478,7 @@ class IP_Geo_Block_API_IPInfoDB extends IP_Geo_Block_API {
  * Input type  : IP address (IPv4)
  * Output type : array
  */
-// Check if IP2Location is available
-if ( function_exists( 'get_option' ) ) {
-	$options = get_option( 'ip_geo_block_settings' );
-	if ( file_exists( $options['ip2location']['path_db'] ) &&
-	     file_exists( $options['ip2location']['path_class'] ) ) {
-		define( 'IP_GEO_BLOCK_IP2LOCATION_DB', $options['ip2location']['path_db'] );
-		define( 'IP_GEO_BLOCK_IP2LOCATION_CL', $options['ip2location']['path_class'] );
-	}
-}
-
-if ( defined( 'IP_GEO_BLOCK_IP2LOCATION_CL' ) ) :
+if ( defined( 'IP_GEO_BLOCK_IP2LOC_IPV4' ) ) :
 
 class IP_Geo_Block_API_IP2Location extends IP_Geo_Block_API {
 	protected $transform_table = array(
@@ -539,39 +490,110 @@ class IP_Geo_Block_API_IP2Location extends IP_Geo_Block_API {
 		'longitude'   => 'longitude',
 	);
 
-	public function __construct( $api_key = NULL ) {
-		parent::__construct( $api_key );
-		require_once( IP_GEO_BLOCK_IP2LOCATION_CL );
-	}
-
 	public function get_location( $ip, $args = array() ) {
+		require_once( IP_GEO_BLOCK_PATH . 'includes/venders/ip2location/IP2Location.php' );
+
+		// setup database file and function
 		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
-			try {
-				$geo = new IP2Location( IP_GEO_BLOCK_IP2LOCATION_DB );
+			$file = IP_GEO_BLOCK_IP2LOC_IPV4;
+			$type = IP_GEO_BLOCK_API_TYPE_IPV4;
+		}
+		else if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
+			$file = IP_GEO_BLOCK_IP2LOC_IPV4; // currently, support only one file
+			$type = IP_GEO_BLOCK_API_TYPE_IPV6;
+		}
+		else
+			return array( 'errorMessage' => 'illegal format' );
+
+		try {
+			$geo = new IP2Location( $file );
+			if ( $geo && ( $geo->get_database_type() & $type ) ) {
+				$res = array();
 				$data = $geo->lookup( $ip );
-			} catch (Exception $e) {
-				return array( 'errorMessage' => $e->getMessage() );
-			}
+				foreach ( $this->transform_table as $key => $val ) {
+					if ( ! empty( $val ) && ! empty( $data->$val ) )
+						$res[ $key ] = $data->$val;
+				}
 
-			$res = array();
-			foreach ( $this->transform_table as $key => $val ) {
-				if ( ! empty( $val ) && ! empty( $data->$val ) )
-					$res[ $key ] = $data->$val;
-			}
-
-			if ( strlen( $res['countryCode'] ) === 2 ) {
-				if ( is_string( $res['latitude' ] ) ) unset( $res['latitude' ] );
-				if ( is_string( $res['longitude'] ) ) unset( $res['longitude'] );
-				return $res;
+				if ( strlen( $res['countryCode'] ) === 2 ) {
+					if ( is_string( $res['latitude' ] ) ) unset( $res['latitude' ] );
+					if ( is_string( $res['longitude'] ) ) unset( $res['longitude'] );
+					return $res;
+				}
 			}
 		}
 
-		return FALSE;
+		catch (Exception $e) {
+			return array( 'errorMessage' => $e->getMessage() );
+		}
+
+		return array( 'errorMessage' => 'Not supported' );
+	}
+}
+
+endif;
+
+/**
+ * Class for Maxmind
+ *
+ * URL         : http://dev.maxmind.com/geoip/legacy/geolite/
+ * Term of use : http://dev.maxmind.com/geoip/legacy/geolite/#License
+ * Licence fee : Creative Commons Attribution-ShareAlike 3.0 Unported License
+ * Input type  : IP address (IPv4, IPv6)
+ * Output type : array
+ */
+if ( defined( 'IP_GEO_BLOCK_MAXMIND_IPV4' ) ) :
+
+class IP_Geo_Block_API_Maxmind extends IP_Geo_Block_API {
+
+	private function location_country( $record ) {
+		return array( 'countryCode' => $record );
 	}
 
-	public function get_country( $ip, $args = array() ) {
-		$res = $this->get_location( $ip, $args );
-		return $res && ! empty( $res['countryCode'] ) ? $res['countryCode'] : FALSE;
+	private function location_city( $record ) {
+		return array(
+			'countryCode' => $record->country_code,
+			'latitude'    => $record->latitude,
+			'longitude'   => $record->longitude,
+		);
+	}
+
+	public function get_location( $ip, $args = array() ) {
+		require_once( IP_GEO_BLOCK_PATH . 'includes/venders/maxmind/geoip.inc' );
+
+		// setup database file and function
+		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) )
+			$file = IP_GEO_BLOCK_MAXMIND_IPV4;
+		else if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) )
+			$file = IP_GEO_BLOCK_MAXMIND_IPV6;
+		else
+			return array( 'errorMessage' => 'illegal format' );
+
+		// open database and fetch data
+		if ( null == ( $geo = geoip_open( $file, GEOIP_STANDARD ) ) )
+			return FALSE;
+
+		switch ( $geo->databaseType ) {
+		  case GEOIP_COUNTRY_EDITION:
+			$res = $this->location_country( geoip_country_code_by_addr( $geo, $ip ) );
+			break;
+		  case GEOIP_COUNTRY_EDITION_V6:
+			$res = $this->location_country( geoip_country_code_by_addr_v6( $geo, $ip ) );
+			break;
+		  case GEOIP_CITY_EDITION_REV1:
+			require_once( IP_GEO_BLOCK_PATH . 'includes/venders/maxmind/geoipcity.inc' );
+			$res = $this->location_city( geoip_record_by_addr( $geo, $ip ) );
+			break;
+		  case GEOIP_CITY_EDITION_REV1_V6:
+			require_once( IP_GEO_BLOCK_PATH . 'includes/venders/maxmind/geoipcity.inc' );
+			$res = $this->location_city( geoip_record_by_addr_v6( $geo, $ip ) );
+			break;
+		  default:
+			$res = array( 'errorMessage' => 'unknown database type' );
+		}
+
+		geoip_close( $geo );
+		return $res;
 	}
 }
 
@@ -587,41 +609,52 @@ endif;
 if ( class_exists( 'IP_Geo_Block' ) ) :
 
 class IP_Geo_Block_API_Cache extends IP_Geo_Block_API {
-	protected $transform_table = array(
-		'countryCode'   => 'code',
-	);
 
-	public function get_location( $ip, $args = array() ) {
-		if ( false === ( $cache = get_transient( IP_Geo_Block::CACHE_KEY ) ) ||
-		     false === array_key_exists( $ip, $cache ) )
-			return array( 'errorMessage' => 'not in the cache' );
+	public static function get_cache( $ip ) {
+		$cache = get_transient( IP_Geo_Block::CACHE_KEY );
+		if ( $cache && isset( $cache[ $ip ] ) )
+			return $cache[ $ip ];
 		else
-			return array( 'countryCode' => $cache[ $ip ][ $this->transform_table['countryCode'] ] );
+			return NULL;
 	}
 
-	public function get_country( $ip, $args = array() ) {
-		$val = $this->get_location( $ip, $args );
-		return $val ? $val['countryCode'] : FALSE;
-	}
-
-	public static function update_cache( $ip, $code, $settings ) {
+	public static function update_cache( $ip, $args, $settings ) {
 		$time = time();
 		$num = ! empty( $settings['cache_hold'] ) ? $settings['cache_hold'] : 10;
 		$exp = ! empty( $settings['cache_time'] ) ? $settings['cache_time'] : HOUR_IN_SECONDS;
 
-		if ( $cache = get_transient( IP_Geo_Block::CACHE_KEY ) ) {
-			$n = 0;
+		// unset expired item
+		if ( false !== ( $cache = get_transient( IP_Geo_Block::CACHE_KEY ) ) ) {
 			foreach ( $cache as $key => $val ) {
-				if ( $time - $val['time'] > $exp || ++$n > $num )
+				if ( $time - $val['time'] > $exp )
 					unset( $cache[ $key ] );
 			}
 		}
 
-		if ( $settings['save_statistics'] ) {
-			$count = ! empty( $cache[ $ip ]['call'] ) ? $cache[ $ip ]['call'] + 1 : 1;
-			$cache[ $ip ] = array( 'time' => $time, 'code' => $code, 'call' => $count );
-		} else {
-			$cache[ $ip ] = array( 'time' => $time, 'code' => $code );
+		// initialize
+		if ( empty( $cache[ $ip ] ) )
+			$cache[ $ip ] = array();
+
+		// add new item
+		$code = $args['code'];
+		$cache[ $ip ] = array_merge( $cache[ $ip ], $args );
+		$cache[ $ip ]['time'] = $time;
+		$cache[ $ip ]['code'] = strlen( $code ) < 2 ? 'ZZ' . $code : $code;
+		if ( $settings['save_statistics'] )
+			++$cache[ $ip ]['call'];
+
+		// sort by 'time'
+		foreach ( $cache as $key => $val )
+			$hash[ $key ] = $val['time'];
+		array_multisort( $hash, SORT_DESC, $cache );
+
+		// keep max number of entries except hiddens
+		$time = 0;
+		foreach ( $cache as $key => $val ) {
+			if ( ! $val['auth'] && ++$time > $num ) {
+				--$time;
+				unset( $cache[ $key ] );
+			}
 		}
 
 		set_transient( IP_Geo_Block::CACHE_KEY, $cache, $exp ); // @since 2.8
@@ -629,6 +662,13 @@ class IP_Geo_Block_API_Cache extends IP_Geo_Block_API {
 
 	public static function delete_cache() {
 		delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
+	}
+
+	public function get_location( $ip, $args = array() ) {
+		if ( $cache = self::get_cache( $ip ) )
+			return array( 'countryCode' => $cache['code'] );
+		else
+			return array( 'errorMessage' => 'not in the cache' );
 	}
 }
 
@@ -660,12 +700,6 @@ class IP_Geo_Block_Provider {
 			'link' => '<a class="ip-geo-block-link" href="http://www.telize.com/" title="Telize - JSON IP and GeoIP REST API" target=_blank>http://www.telize.com/</a>&nbsp;(IPv4, IPv6 / free)',
 		),
 
-		'IPtoLatLng' => array(
-			'key'  => NULL,
-			'type' => 'IPv4, IPv6 / free',
-			'link' => '<a class="ip-geo-block-link" href="http://www.iptolatlng.com/" title="IP to Latitude, Longitude" target=_blank>http://www.iptolatlng.com/</a>&nbsp;(IPv4, IPv6 / free)',
-		),
-
 		'IP-Json' => array(
 			'key'  => NULL,
 			'type' => 'IPv4, IPv6 / free',
@@ -678,12 +712,6 @@ class IP_Geo_Block_Provider {
 			'link' => '<a class="ip-geo-block-link" href="http://xhanch.com/xhanch-api-ip-get-detail/" title="Xhanch API &#8211; IP Get Detail | Xhanch Studio" target=_blank>http://xhanch.com/</a>&nbsp;(IPv4 / free)',
 		),
 
-		'mshd.net' => array(
-			'key'  => NULL,
-			'type' => 'IPv4, IPv6 / free',
-			'link' => '<a class="ip-geo-block-link" href="http://mshd.net/documentation/geoip" title="www.mshd.net - Geoip Documentation" target=_blank>http://mshd.net/</a>&nbsp;(IPv4, IPv6 / free)',
-		),
-
 		'geoPlugin' => array(
 			'key'  => NULL,
 			'type' => 'IPv4, IPv6 / free, need an attribution link',
@@ -692,7 +720,7 @@ class IP_Geo_Block_Provider {
 
 		'ip-api.com' => array(
 			'key'  => FALSE,
-			'type' => 'IPv4, IPv6 / free for non-commercial use',
+			'type' => 'IPv4 / free for non-commercial use',
 			'link' => '<a class="ip-geo-block-link" href="http://ip-api.com/" title="IP-API.com - Free Geolocation API" target=_blank>http://ip-api.com/</a>&nbsp;(IPv4, IPv6 / free for non-commercial use)',
 		),
 
@@ -709,6 +737,12 @@ class IP_Geo_Block_Provider {
 			'key'  => NULL,
 			'type' => 'IPv4 / free, need an attribution link',
 			'link' => '<a class="ip-geo-block-link" href="http://www.ip2location.com/free/plugins" title="Free Plugins | IP2Location.com" target=_blank>http://www.ip2location.com/</a>&nbsp;(IPv4 / free, need an attribution link)',
+		),
+
+		'Maxmind' => array(
+			'key'  => NULL,
+			'type' => 'IPv4, IPv6 / free, need an attribution link',
+			'link' => '<a class="ip-geo-block-link" href="http://dev.maxmind.com/geoip/legacy/geolite/" title="GeoLite Free Downloadable Databases &laquo; Maxmind Developer Site" target=_blank>http://www.maxmind.com</a>&nbsp;(IPv4, IPv6 / free, need an attribution link)',
 		),
 
 		'Cache' => array(
@@ -738,6 +772,11 @@ class IP_Geo_Block_Provider {
 		if ( class_exists( 'IP_Geo_Block_API_IP2Location' ) )
 			$list = array(
 				'IP2Location' => self::$internals['IP2Location'][ $key ]
+			) + $list;
+
+		if ( class_exists( 'IP_Geo_Block_API_Maxmind' ) )
+			$list = array(
+				'Maxmind' => self::$internals['Maxmind'][ $key ]
 			) + $list;
 
 		if ( $cache )
