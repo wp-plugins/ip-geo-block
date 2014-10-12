@@ -1,4 +1,8 @@
 /* This stylesheet is used to style the admin option form of the plugin. */
+dfn {
+    cursor: help;
+}
+
 #check-provider label {
     width: 8em;
     display: inline-block;
@@ -10,7 +14,8 @@
     }
 }
 
-#ip-geo-block-loading {
+#ip-geo-block-loading,
+#ip-geo-block-download {
     padding: 0;
     margin: 0.25em 0 0 2em;
     height: 16px;
@@ -31,13 +36,16 @@
 }
 
 .ip-geo-block-result {
-    color:#2786C2;
+    color: #2786C2;
     display: inline-block;
 }
 
 #ip-geo-block-map {
+    width: 95%;
+    height: 360px;
     margin-top: 1em;
-    height:360px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* google map infomation window */
@@ -47,21 +55,29 @@
     height: 100%;
     min-height: 100%:
 }
+.gm-style-iw ul {
+    margin: 0.1em;
+}
+.gm-style-iw li {
+    margin: 0.2em;
+}
 
 ul.ip-geo-block-statistics-countries li {
     width: 12em;
     float: left;
 }
 
+table.ip-geo-block-statistics-post th,
 table.ip-geo-block-statistics-type th,
-table.ip-geo-block-statistics-services th,
-table.ip-geo-block-statistics-caches th {
+table.ip-geo-block-statistics-service th,
+table.ip-geo-block-statistics-cache th {
     width: 12em;
     text-align: right;
 }
 
+table.ip-geo-block-statistics-post td,
 table.ip-geo-block-statistics-type td,
-table.ip-geo-block-statistics-services td,
-table.ip-geo-block-statistics-caches td {
+table.ip-geo-block-statistics-service td,
+table.ip-geo-block-statistics-cache td {
     text-align: right;
 }
