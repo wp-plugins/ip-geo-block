@@ -6,7 +6,7 @@
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
  * @link      http://tokkono.cute.coocan.jp/blog/slow/
- * @copyright 2013 tokkonopapa
+ * @copyright 2013, 2014 tokkonopapa
  */
 
 /**
@@ -450,10 +450,10 @@ class IP_Geo_Block_API_IPInfoDB extends IP_Geo_Block_API {
 }
 
 /**
- * Check if internal databases are available
+ * Check if local database files are available
  */
-if ( function_exists( 'get_option' ) ) {
-	$options = get_option( 'ip_geo_block_settings' );
+if ( class_exists( 'IP_Geo_Block' ) ) :
+	$options = IP_Geo_Block::get_option( 'settings' );
 
 	// IP2Location
 	$path = $options['ip2location']['ipv4_path'];
@@ -467,7 +467,7 @@ if ( function_exists( 'get_option' ) ) {
 		define( 'IP_GEO_BLOCK_MAXMIND_IPV4', $options['maxmind']['ipv4_path'] );
 		define( 'IP_GEO_BLOCK_MAXMIND_IPV6', $options['maxmind']['ipv6_path'] );
 	}
-}
+endif;
 
 /**
  * Class for IP2Location
@@ -610,14 +610,6 @@ if ( class_exists( 'IP_Geo_Block' ) ) :
 
 class IP_Geo_Block_API_Cache extends IP_Geo_Block_API {
 
-	public static function get_cache( $ip ) {
-		$cache = get_transient( IP_Geo_Block::CACHE_KEY );
-		if ( $cache && isset( $cache[ $ip ] ) )
-			return $cache[ $ip ];
-		else
-			return NULL;
-	}
-
 	public static function update_cache( $ip, $args, $settings ) {
 		$time = time();
 		$num = ! empty( $settings['cache_hold'] ) ? $settings['cache_hold'] : 10;
@@ -635,12 +627,18 @@ class IP_Geo_Block_API_Cache extends IP_Geo_Block_API {
 		if ( empty( $cache[ $ip ] ) )
 			$cache[ $ip ] = array();
 
-		// add new item
 		$code = $args['code'];
+		$call = empty( $args['call'] );
+		if ( isset( $args['call'] ) )
+			unset( $args['call'] );
+
+		// add new item
 		$cache[ $ip ] = array_merge( $cache[ $ip ], $args );
 		$cache[ $ip ]['time'] = $time;
 		$cache[ $ip ]['code'] = strlen( $code ) < 2 ? 'ZZ' . $code : $code;
-		if ( $settings['save_statistics'] )
+
+		// avoid duplicated count by $call
+		if ( $settings['save_statistics'] && $call )
 			++$cache[ $ip ]['call'];
 
 		// sort by 'time'
@@ -664,8 +662,16 @@ class IP_Geo_Block_API_Cache extends IP_Geo_Block_API {
 		delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
 	}
 
+	public function get_cache( $ip ) {
+		$cache = get_transient( IP_Geo_Block::CACHE_KEY );
+		if ( $cache && isset( $cache[ $ip ] ) )
+			return $cache[ $ip ];
+		else
+			return NULL;
+	}
+
 	public function get_location( $ip, $args = array() ) {
-		if ( $cache = self::get_cache( $ip ) )
+		if ( $cache = $this->get_cache( $ip ) )
 			return array( 'countryCode' => $cache['code'] );
 		else
 			return array( 'errorMessage' => 'not in the cache' );
