@@ -116,7 +116,35 @@
 		});
 	}
 
+	// Clear logs
+	function ajax_clear_logs() {
+		$('#ip-geo-block-loading').addClass('ip-geo-block-loading');
+
+		$.post(IP_GEO_BLOCK.url, {
+			action: IP_GEO_BLOCK.action,
+			nonce: IP_GEO_BLOCK.nonce,
+			clear: 'logs'
+		})
+
+		.done(function (data, textStatus, jqXHR) {
+			window.location = data.refresh;
+		})
+
+		.fail(function (jqXHR, textStatus, errorThrown) {
+			alert(jqXHR.responseText);
+		})
+
+		.complete(function () {
+			$('#ip-geo-block-loading').removeClass('ip-geo-block-loading');
+		});
+	}
+
 	$(function () {
+		// Kick-off footable
+		if (typeof $.fn.footable === 'function') {
+			$('.ip-geo-block-log').footable();
+		}
+
 		// Inhibit to submit by return key
 		$('#ip-geo-block-inhibit').on('submit', function () {
 			return false;
@@ -131,6 +159,14 @@
 		$('#clear_statistics').on('click', function (event) {
 			if (window.confirm('Clear statistics ?')) {
 				ajax_clear_statistics();
+			}
+			return false;
+		});
+
+		// Validation Logs
+		$('#clear_logs').on('click', function (event) {
+			if (window.confirm('Clear logs ?')) {
+				ajax_clear_logs();
 			}
 			return false;
 		});
@@ -152,16 +188,33 @@
 
 		// Attribution link (redirect without referer)
 		$('a.ip-geo-block-link').on('click', function (event) {
+			var list = [
+				'freegeoip.net',
+				'ipinfo.io',
+				'www.telize.com',
+				'ip-json.rhcloud.com',
+				'xhanch.com',
+				'www.geoplugin.com',
+				'ip-api.com',
+				'ipinfodb.com',
+				'www.maxmind.com',
+				'dev.maxmind.com',
+				'www.ip2location.com',
+				'en.wikipedia.org',
+				'tools.ietf.org'
+			];
+
 			var url = this.href;
-			var w = window.open();
-			w.document.write(
-				'<meta http-equiv="refresh" content="1; url=' + url +'">' +
-				'<body>Redirecting to ' + sanitize(url) + ' ...</body>'
-			);
-			w.document.close();
+			$.each(list, function (i, val) {
+				if (0 === url.indexOf('http://' + this)) {
+					var w = window.open();
+					w.document.write(
+						'<meta http-equiv="refresh" content="0; url=' + sanitize(url) + '">'
+					);
+					w.document.close();
+				}
+			});
 			return false;
 		});
-
 	});
-
 }(jQuery));

@@ -2,18 +2,18 @@
 /**
  * IP Geo Block
  *
- * A WordPress plugin that blocks any comments posted from outside your nation.
+ * A WordPress plugin that blocks undesired access based on geolocation of IP address.
  *
  * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
  * @link      http://tokkono.cute.coocan.jp/blog/slow/
- * @copyright 2013 tokkonopapa
+ * @copyright 2013, 2014 tokkonopapa
  *
  * Plugin Name:       IP Geo Block
  * Plugin URI:        http://wordpress.org/plugins/ip-geo-block/
- * Description:       It will block any spam comments posted from undesired countries.
- * Version:           1.2.1
+ * Description:       A WordPress plugin that will block any comment and pingback spams posted from outside of your nation.
+ * Version:           1.3.0
  * Author:            tokkonopapa
  * Author URI:        https://github.com/tokkonopapa/WordPress-IP-Geo-Block
  * Text Domain:       ip-geo-block

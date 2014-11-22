@@ -4,11 +4,6 @@ if ( ! function_exists( 'download_url' ) )
 	require_once( ABSPATH . 'wp-admin/includes/file.php' );
 
 /**
- * Default path to database file
- */
-define( 'IP_GEO_BLOCK_DB_DIR', IP_GEO_BLOCK_PATH . 'database/' );
-
-/**
  * URL of Maxmind GeoLite database
  */
 define( 'IP_GEO_BLOCK_MAXMIND_IPV4_ZIP', 'http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz' );
@@ -17,16 +12,18 @@ define( 'IP_GEO_BLOCK_MAXMIND_IPV6_ZIP', 'http://geolite.maxmind.com/download/ge
 /**
  * Check file and update last-modified
  *
- * @param string $url URL of zip file of database.
- * @param string $dir target path.
+ * @param string $url URL to the source of database zip file.
+ * @param string $dir path to the destination directory.
  * @param string $filename pull path of uncompressed file.
  * @param int $modified time of last modified on the remote server.
  */
 function ip_geo_block_download_path( $url, $dir, &$filename, &$modified ) {
+	// if the name of src file is changed, then update the dst
 	if ( basename( $filename ) !== ( $base = basename( $url, '.gz' ) ) ) {
 		$filename = dirname( $filename ) . "/$base";
 	}
 
+	// if the dst is empty or does not exist, then make sure to download
 	if ( ! $filename || ! is_readable( $filename ) ) {
 		$filename = trailingslashit( $dir ) . $base;
 		$modified = 0;
@@ -46,7 +43,7 @@ function ip_geo_block_download_zip( $url, $args, $filename, $modified ) {
 	// set 'If-Modified-Since' request header
 	$args += array(
 		'headers'  => array(
-			'If-Modified-Since' => gmdate( DATE_RFC1123, $modified ),
+			'If-Modified-Since' => gmdate( DATE_RFC1123, (int)$modified ),
 		),
 	);
 

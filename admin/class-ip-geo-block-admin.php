@@ -1,12 +1,12 @@
 <?php
 /**
- * Admin class of IP Geo Block
+ * IP Geo Block - Admin class
  *
- * @package   IP_Geo_Block_Admin
+ * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
  * @link      http://tokkono.cute.coocan.jp/blog/slow/
- * @copyright 2013 tokkonopapa
+ * @copyright 2013, 2014 tokkonopapa
  */
 
 class IP_Geo_Block_Admin {
@@ -108,17 +108,23 @@ class IP_Geo_Block_Admin {
 				array(), IP_Geo_Block::VERSION
 			);
 
+			// css for footable https://github.com/bradvin/FooTable
+			wp_enqueue_style( IP_Geo_Block::PLUGIN_SLUG . '-footable-css',
+				plugins_url( 'css/footable.core.min.css', __FILE__ ),
+				array(), IP_Geo_Block::VERSION
+			);
+
 			// js for google map
 			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-google-map',
 				'http://maps.google.com/maps/api/js?sensor=false',
-				array( 'jquery' ), IP_Geo_Block::VERSION, TRUE
+				array( 'jquery' ), IP_Geo_Block::VERSION
 			);
 
 			// js for option page
 			$handle = IP_Geo_Block::PLUGIN_SLUG . '-admin-script';
 			wp_enqueue_script( $handle,
 				plugins_url( 'js/admin.js', __FILE__ ),
-				array( 'jquery' ), IP_Geo_Block::VERSION, TRUE
+				array( 'jquery' ), IP_Geo_Block::VERSION
 			);
 
 			// global value for ajax @since r16
@@ -167,7 +173,7 @@ class IP_Geo_Block_Admin {
 	}
 
 	/**
-	 * Register the administration menu for this plugin into the WordPress Dashboard menu.
+	 * Register the administration menu into the WordPress Dashboard menu.
 	 *
 	 */
 	public function add_plugin_admin_menu() {
@@ -210,7 +216,8 @@ class IP_Geo_Block_Admin {
 <?php if ( 2 === $tab ) { ?>
 	<div id="ip-geo-block-map"></div>
 <?php } else if ( 3 === $tab ) { ?>
-	<p>This product includes GeoLite data created by MaxMind, available from <a href="http://www.maxmind.com">http://www.maxmind.com</a>.<br />This product includes IP2Location open source libraries available from <a href="http://www.ip2location.com">http://www.ip2location.com</a>.</p>
+	<p>This product includes GeoLite data created by MaxMind, available from <a class="ip-geo-block-link" href="http://www.maxmind.com" target=_blank>http://www.maxmind.com</a>.<br />
+	This product includes IP2Location open source libraries available from <a class="ip-geo-block-link" href="http://www.ip2location.com" target=_blank>http://www.ip2location.com</a>.</p>
 <?php } ?>
 	<p><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php echo memory_get_usage(); ?> bytes.</p>
 </div>
@@ -223,38 +230,30 @@ class IP_Geo_Block_Admin {
 	 */
 	public function register_admin_settings() {
 		$tab = isset( $_GET['tab'] ) ? (int)$_GET['tab'] : 0;
-		$tab = min( 3, max( 0, $tab ) );
-
-		/*========================================*
-		 * Settings
-		 *========================================*/
-		if ( 0 === $tab ) {
+		switch( min( 3, max( 0, $tab ) ) ) {
+		  case 0:
+			// Settings
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-settings.php' );
-			tab_settings( $this );
-		}
+			ip_geo_block_tab_settings( $this );
+			break;
 
-		/*========================================*
-		 * Statistics
-		 *========================================*/
-		else if ( 1 === $tab ) {
+		  case 1:
+			// Statistics
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-statistics.php' );
-			tab_statistics( $this );
-		}
+			ip_geo_block_tab_statistics( $this );
+			break;
 
-		/*========================================*
-		 * Geolocation
-		 *========================================*/
-		else if ( 2 === $tab ) {
+		  case 2:
+			// Geolocation
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-geolocation.php' );
-			tab_geolocation( $this );
-		}
+			ip_geo_block_tab_geolocation( $this );
+			break;
 
-		/*========================================*
-		 * Attribution
-		 *========================================*/
-		else if ( 3 === $tab ) {
+		  case 3:
+			// Attribution
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-attribution.php' );
-			tab_attribution( $this );
+			ip_geo_block_tab_attribution( $this );
+			break;
 		}
 	}
 
@@ -271,7 +270,6 @@ class IP_Geo_Block_Admin {
 	 * Function that fills the field with the desired inputs as part of the larger form.
 	 * The 'id' and 'name' should match the $id given in the add_settings_field().
 	 * @param array $args A value to be given into the field.
-	 * @link http://codex.wordpress.org/Function_Reference/checked
 	 */
 	public function callback_field( $args ) {
 		if ( ! empty( $args['before'] ) )
@@ -359,16 +357,13 @@ class IP_Geo_Block_Admin {
 	 * @param string $option_name The name of option table.
 	 * @param array $input The values to be validated.
 	 *
-	 * @link http://codex.wordpress.org/Data_Validation
+	 * @link http://codex.wordpress.org/Validating_Sanitizing_and_Escaping_User_Data
 	 * @link http://codex.wordpress.org/Function_Reference/sanitize_option
 	 * @link http://codex.wordpress.org/Function_Reference/sanitize_text_field
 	 * @link http://codex.wordpress.org/Plugin_API/Filter_Reference/sanitize_option_$option
 	 * @link https://core.trac.wordpress.org/browser/trunk/src/wp-includes/formatting.php
 	 */
-	private function sanitize_options( $option_name, $input ) {
-		$message = __( 'successfully updated', IP_Geo_Block::TEXT_DOMAIN );
-		$status = 'updated';
-
+	private function validate_options( $option_name, $input ) {
 		// setup base options
 		$output = IP_Geo_Block::get_option( $option_name );
 		$default = IP_Geo_Block::get_default( $option_name );
@@ -378,29 +373,17 @@ class IP_Geo_Block_Admin {
 		$only = strpos( $only, 'only-' ) === 0 ? substr( $only, 5 ) : FALSE;
 
 		/**
-		 * Sanitize a string from user input or from the db
-		 *
-		 * - check for invalid UTF-8,
-		 * - convert single `<` characters to entity,
-		 * - strip all tags,
-		 * - remove line breaks, tabs and extra white space,
-		 * - strip octets.
-		 *
-		 * @since 2.9.0
-		 * @example sanitize_text_field( $str );
-		 * @param string $str
-		 * @return string
+		 * Sanitize a string from user input
 		 */
 		foreach ( $output as $key => $value ) {
 			// skip except specified key
-			if ( $only && $only !== $key )
+			if ( $only && $only !== $key ) 
 				continue;
 
 			switch( $key ) {
 			  case 'providers':
-				require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
-				$providers = IP_Geo_Block_Provider::get_providers( 'key' );
-				foreach ( $providers as $provider => $api ) {
+				require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
+				foreach ( IP_Geo_Block_Provider::get_providers() as $provider => $api ) {
 					// need no key
 					if ( NULL === $api ) {
 						if ( isset( $input[ $key ][ $provider ] ) )
@@ -436,13 +419,11 @@ class IP_Geo_Block_Admin {
 			  case 'black_list':
 				$output[ $key ] = isset( $input[ $key ] ) ?
 					sanitize_text_field(
-						preg_replace( '/[^A-Z,]/', '', strtoupper( $input[ $key ] ) )
+						@preg_replace( '/[^A-Z,]/', '', strtoupper( $input[ $key ] ) )
 					) : '';
 				break;
 
 			  // for arrays not on the form
-			  case 'flags':
-			  case 'validation': // should be removed when it is implemented.
 			  case 'ip2location':
 				break;
 
@@ -473,27 +454,21 @@ class IP_Geo_Block_Admin {
 					else if ( isset( $input[ $key ][ $sub ] ) ) {
 						$output[ $key ][ $sub ] = is_int( $default[ $key ][ $sub ] ) ?
 							(int)$input[ $key ][ $sub ] :
-							sanitize_text_field( trim( $input[ $key ][ $sub ] ) );
+							sanitize_text_field(
+								@preg_replace( '/\s/', '', $input[ $key ][ $sub ] )
+							);
 					}
 				}
 				break;
 			}
 		}
 
-		// schedule auto updating
-		IP_Geo_Block::schedule_cron_job( $output['update'], $output['maxmind'], TRUE );
-
-		// This call is just for debug.
-		// @param string $setting: Slug title of the setting to which this error applies.
-		// @param string $code: Slug-name to identify the error.
-		// @param string $message: The formatted message text to display to the user.
-		// @param string $type: The type of message it is. 'error' or 'updated'.
-		// @link: http://codex.wordpress.org/Function_Reference/add_settings_error
+		// Register a settings error to be displayed to the user
 		add_settings_error(
-			$this->option_slug
-			, $this->option_name[ $option_name ]
-			, $message //.' : ' . print_r( $output, true )
-			, $status
+			$this->option_slug,
+			$this->option_name[ $option_name ],
+			__( 'Successfully updated', IP_Geo_Block::TEXT_DOMAIN ),
+			'updated'
 		);
 
 		return $output;
@@ -503,16 +478,16 @@ class IP_Geo_Block_Admin {
 	 * Sanitize options.
 	 *
 	 */
-	public function sanitize_settings( $input = array() ) {
-		return $this->sanitize_options( 'settings', $input );
+	public function validate_settings( $input = array() ) {
+		return $this->validate_options( 'settings', $input );
 	}
 
 	/**
 	 * Ajax callback function
 	 *
 	 * @link http://codex.wordpress.org/AJAX_in_Plugins
-	 * @link http://core.trac.wordpress.org/browser/trunk/wp-admin/admin-ajax.php
 	 * @link http://codex.wordpress.org/Function_Reference/check_ajax_referer
+	 * @link http://core.trac.wordpress.org/browser/trunk/wp-admin/admin-ajax.php
 	 */
 	public function admin_ajax_callback() {
 
@@ -524,17 +499,12 @@ class IP_Geo_Block_Admin {
 
 		// download database
 		else if ( isset( $_POST['download'] ) ) {
-			// download now
-			$res = IP_Geo_Block::get_instance();
-			$res = $res->download_database( 'only-maxmind' );
-
-			// respond
-			wp_send_json( $res ); // @since 3.5.0
+			$res = IP_Geo_Block::download_database( 'only-maxmind' ); // download now
 		}
 
 		// Check ip address
 		else if ( isset( $_POST['provider'] ) ) {
-			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
 			// check format
 			$ip = $_POST['ip'];
@@ -564,31 +534,27 @@ class IP_Geo_Block_Admin {
 			else {
 				$res = array( 'errorMessage' => 'Invalid IP address.' );
 			}
-
-			// respond
-			wp_send_json( $res ); // @since 3.5.0
 		}
 
-		// Clear statistics
+		// Clear
 		else if ( isset( $_POST['clear'] ) ) {
-			// set default values
-			update_option(
-				$this->option_name['statistics'],
-				IP_Geo_Block::get_default( 'statistics' )
-			);
+			switch ( $_POST['clear'] ) {
+			  case 'statistics':
+				// set default values
+				update_option(
+					$this->option_name['statistics'],
+					IP_Geo_Block::get_default( 'statistics' )
+				);
 
-			// delete cache of IP address
-			delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
-
-			// refresh page
-			wp_send_json( array(
-				'refresh' => 'options-general.php?page=ip-geo-block&tab=1',
-			) );
+				// delete cache of IP address
+				delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
+				$res = array( 'refresh' => "options-general.php?page=" . IP_Geo_Block::PLUGIN_SLUG . "&tab=1" );
+				break;
+			}
 		}
 
-		else {
-			wp_send_json( array( 'errorMessage' => 'Invalid command.' ) );
-		}
+		if ( isset( $res ) )
+			wp_send_json( $res ); // @since 3.5.0
 
 		// End of ajax
 		die();
