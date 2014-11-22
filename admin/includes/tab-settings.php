@@ -1,8 +1,8 @@
 <?php
 require_once( IP_GEO_BLOCK_PATH . 'includes/localdate.php' );
-require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
+require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
-function tab_settings( $context ) {
+function ip_geo_block_tab_settings( $context ) {
 	$option_slug = $context->option_slug['settings'];
 	$option_name = $context->option_name['settings'];
 	$options = IP_Geo_Block::get_option( 'settings' );
@@ -20,7 +20,7 @@ function tab_settings( $context ) {
 	register_setting(
 		$option_slug,
 		$option_name,
-		array( $context, 'sanitize_settings' )
+		array( $context, 'validate_settings' )
 	);
 
 	/**
@@ -71,6 +71,57 @@ function tab_settings( $context ) {
 			'value' => $options[ $field ],
 			'providers' => IP_Geo_Block_Provider::get_providers( 'key' ),
 			'titles' => IP_Geo_Block_Provider::get_providers( 'type' ),
+		)
+	);
+
+	/*----------------------------------------*
+	 * Validation settings
+	 *----------------------------------------*/
+	$section = IP_Geo_Block::PLUGIN_SLUG . '-validation';
+	add_settings_section(
+		$section,
+		__( 'Validation settings', IP_Geo_Block::TEXT_DOMAIN ),
+		NULL,
+		$option_slug
+	);
+
+	// same as in tab-accesslog.php
+	$title = array(
+		'comment' => __( '<dfn title="Validate post to wp-comments-post.php">Comment post</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'xmlrpc'  => __( '<dfn title="Validate pinback.ping to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'proxy'  => __( '<dfn title="Validate all IPs in HTTP_X_FORWARDED_FOR">HTTP_X_FORWARDED_FOR</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+	);
+
+	$field = 'validation';
+	foreach ( $title as $key => $val ) {
+		add_settings_field(
+			$option_name . "_${field}_${key}",
+			$title[ $key ],
+			array( $context, 'callback_field' ),
+			$option_slug,
+			$section,
+			array(
+				'type' => 'checkbox',
+				'option' => $option_name,
+				'field' => $field,
+				'sub-field' => $key,
+				'value' => $options[ $field ][ $key ],
+			)
+		);
+	}
+
+	$field = 'save_statistics';
+	add_settings_field(
+		$option_name . "_$field",
+		__( 'Save statistics of validation', IP_Geo_Block::TEXT_DOMAIN ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'checkbox',
+			'option' => $option_name,
+			'field' => $field,
+			'value' => $options[ $field ],
 		)
 	);
 
@@ -130,21 +181,6 @@ function tab_settings( $context ) {
 
 	$field = 'update';
 	add_settings_field(
-		$option_name . "_${field}_download",
-		__( 'Download database', IP_Geo_Block::TEXT_DOMAIN ),
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'button',
-			'option' => $option_name,
-			'field' => $field,
-			'value' => __( 'Download from Maxmind', IP_Geo_Block::TEXT_DOMAIN ),
-			'after' => '<div id="ip-geo-block-download"></div>',
-		)
-	);
-
-	add_settings_field(
 		$option_name . "_${field}_auto",
 		__( 'Auto updating (once a month)', IP_Geo_Block::TEXT_DOMAIN ),
 		array( $context, 'callback_field' ),
@@ -156,6 +192,21 @@ function tab_settings( $context ) {
 			'field' => $field,
 			'sub-field' => 'auto',
 			'value' => $options[ $field ]['auto'],
+		)
+	);
+
+	add_settings_field(
+		$option_name . "_${field}_download",
+		__( 'Download database', IP_Geo_Block::TEXT_DOMAIN ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'button',
+			'option' => $option_name,
+			'field' => $field,
+			'value' => __( 'Download now', IP_Geo_Block::TEXT_DOMAIN ),
+			'after' => '<div id="ip-geo-block-download"></div>',
 		)
 	);
 
@@ -322,21 +373,6 @@ function tab_settings( $context ) {
 		__( 'Plugin settings', IP_Geo_Block::TEXT_DOMAIN ),
 		NULL,
 		$option_slug
-	);
-
-	$field = 'save_statistics';
-	add_settings_field(
-		$option_name . "_$field",
-		__( 'Save statistics', IP_Geo_Block::TEXT_DOMAIN ),
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'checkbox',
-			'option' => $option_name,
-			'field' => $field,
-			'value' => $options[ $field ],
-		)
 	);
 
 	$field = 'clean_uninstall';

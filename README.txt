@@ -1,20 +1,21 @@
 === IP Geo Block ===
 Contributors: tokkonopapa
 Donate link:
-Tags: comment, spam, IP address, geolocation
+Tags: comment, pingback, spam, IP address, geolocation, xmlrpc
 Requires at least: 3.5
-Tested up to: 4.0
-Stable tag: 1.2.1
+Tested up to: 4.0.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress plugin that blocks any comments posted from outside your nation.
+A WordPress plugin that will block any comment and pingback spams posted from 
+outside of your nation.
 
 == Description ==
 
-This plugin will examine a country code based on the posting author's IP 
-address. If the comment comes from undesired country, it will be blocked 
-before Akismet validate it.
+This plugin will examine a country code based on the IP address. If the 
+comment or pingback comes from specific country, it will be blocked before 
+Akismet validate it.
 
 = Features =
 
@@ -25,22 +26,20 @@ select an appropriate API.
 
 2. [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention") 
 GeoLite free database for IPv4 and IPv6 will be downloaded and updated 
-(once a month) automatically.
-
-3. If you have correctly installed one of the IP2Location plugins (
+(once a month) automatically.<br><br>And if you have correctly installed 
+one of the IP2Location plugins (
     [IP2Location Tags](http://wordpress.org/plugins/ip2location-tags/ "WordPress - IP2Location Tags - WordPress Plugins"),
     [IP2Location Variables](http://wordpress.org/plugins/ip2location-variables/ "WordPress - IP2Location Variables - WordPress Plugins"),
     [IP2Location Country Blocker](http://wordpress.org/plugins/ip2location-country-blocker/ "WordPress - IP2Location Country Blocker - WordPress Plugins")
-), this plugin uses its local database prior to the REST APIs. After installing 
-these IP2Location plugins, you should be once deactivated and then activated 
-in order to set the path to `database.bin`.
+), this plugin uses its local database prior to the REST APIs.
+After installing these IP2Location plugins, you should be once deactivated 
+and then activated in order to set the path to `database.bin`.
 
-4. Cache mechanism with transient API for the fetched IP addresses has been 
-equipped to reduce load on the server against continuous access within a 
-short time.
+3. Cache mechanism with transient API for the fetched IP addresses has been 
+equipped to reduce load on the server against burst access within a short time.
 
-5. Custom validation function can be added using `ip-geo-block-comment` 
-filter hook with `add_filter()`.
+4. Custom validation function can be added using predefined filter hook with 
+`add_filter()`.
 
 = Development =
 
@@ -50,7 +49,12 @@ All contributions will always be welcome.
 
 = Attribution =
 
-Thanks for providing these great services for free.
+This package includes GeoLite data created by MaxMind, available from 
+    [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention"),
+and also includes IP2Location open source libraries available from 
+    [IP2Location](http://www.ip2location.com "IP Address Geolocation to Identify Website Visitor's Geographical Location").
+
+And also thanks for providing these great services and REST APIs for free.
 
 * [http://freegeoip.net/](http://freegeoip.net/ "freegeoip.net: FREE IP Geolocation Web Service") (IPv4 / free)
 * [http://ipinfo.io/](http://ipinfo.io/ "ipinfo.io - ip address information including geolocation, hostname and network details") (IPv4, IPv6 / free)
@@ -60,11 +64,6 @@ Thanks for providing these great services for free.
 * [http://www.geoplugin.com/](http://www.geoplugin.com/ "geoPlugin to geolocate your visitors") (IPv4, IPv6 / free, need an attribution link)
 * [http://ip-api.com/](http://ip-api.com/ "IP-API.com - Free Geolocation API") (IPv4, IPv6 / free for non-commercial use)
 * [http://ipinfodb.com/](http://ipinfodb.com/ "IPInfoDB | Free IP Address Geolocation Tools") (IPv4, IPv6 / free for registered user, need API key)
-
-Some of these services and APIs use GeoLite data created by
-    [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention"),
-and some include IP2Location LITE data available from 
-    [IP2Location](http://www.ip2location.com "IP Address Geolocation to Identify Website Visitor's Geographical Location").
 
 == Installation ==
 
@@ -82,6 +81,11 @@ and some include IP2Location LITE data available from
     [their site](http://ipinfodb.com/ "IPInfoDB | Free IP Address Geolocation Tools") 
     to get a free API key and set it into the textfield.
     And `ip-api.com` and `Smart-IP.net` require non-commercial use.
+
+* **Validation settings**  
+    `XML-RPC` is for validation of pingback spam. If `HTTP_X_FORWARDED_FOR` is 
+    checked, all the IP addresses in `$_SERVER['HTTP_X_FORWARDED_FOR']` will be
+    validated.
 
 * **Text position on comment form**  
     If you want to put some text message on your comment form, please select
@@ -101,10 +105,10 @@ and some include IP2Location LITE data available from
     Select one of the 
     [response code](http://tools.ietf.org/html/rfc2616#section-10 "RFC 2616 - Hypertext Transfer Protocol -- HTTP/1.1")
     to be sent when it blocks a comment.
-    The 2xx code will refresh to your top page, the 3xx code will redirect to 
+    The 2xx code will lead to your top page, the 3xx code will redirect to 
     [Black Hole Server](http://blackhole.webpagetest.org/),
     the 4xx code will lead to WordPress error page, and the 5xx will pretend 
-    an error.
+    an server error.
 
 * **Remove settings at uninstallation**  
     If you checked this option, all settings will be removed when this plugin
@@ -176,7 +180,7 @@ Yes, here is the list of all hooks.
 
 * `ip-geo-block-ip-addr`          : IP address of accessor.
 * `ip-geo-block-headers`          : compose http request headers.
-* `ip-geo-block-comment`          : validate IP address on `wp-comments-post.php`.
+* `ip-geo-block-comment`          : validate post to `wp-comments-post.php` and `pingback.ping` to `xmlrpc.php`.
 * `ip-geo-block-maxmind-dir`      : absolute path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
 * `ip-geo-block-maxmind-zip-ipv6` : url to Maxmind GeoLite DB zip file for IPv6.
@@ -185,9 +189,6 @@ Yes, here is the list of all hooks.
 For more details, see `samples.php` bundled within this package.
 
 == Other Notes ==
-
-Before updating from older version to newer, please deactivate then activate 
-this plugin on the plugin dashboard.
 
 If you do not want to keep the IP2Location plugins (
     [IP2Location Tags](http://wordpress.org/plugins/ip2location-tags/ "WordPress - IP2Location Tags - WordPress Plugins"),
@@ -205,12 +206,20 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 
 == Changelog ==
 
+= 1.3.0 =
+* **New feature:** Added validation of pingback.ping through `xmlrpc.php` and
+  new option to validate all the IP addresses in HTTP_X_FORWARDED_FOR.
+* **Fixed an issue:** Maxmind database file may be downloaded automatically
+  without deactivate/re-activate when upgrade is finished.
+* This is the final version on 1.x. On next release, accesses to `login.php`
+  and admin area will be also validated for security purpose.
+
 = 1.2.1 =
 * **Fixed an issue:** Option table will be updated automatically without
   deactivate/re-activate when this plugin is upgraded.
 * **A little bit performance improvement:**
-  Less memory footprint at downloading Maxmind database.
-  Less sql queries when `Save statistics` is enable.
+  Less memory footprint at the time of downloading Maxmind database file.
+  Less sql queries when `Save statistics` is enabled.
 
 = 1.2.0 =
 * **New feature:** Added Maxmind GeoLite database auto downloader and updater.
@@ -248,42 +257,5 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 
 = 1.0.0 =
 * Ready to release.
-
-= 0.9.9 =
-* Refine UI and modify settings data format.
-
-= 0.9.8 =
-* Add support for IP2Location WordPress plugins.
-
-= 0.9.7 =
-* Refine UI of provider selection and API key setting.
-* Fix js error on setting page.
-
-= 0.9.6 =
-* Change all class names and file names.
-* Simplify jQuery Google Map plugin.
-* Add some providers.
-* Add `ip-geo-block-addr` filter hook for local testing.
-* Add `enables` to option table for the future usage.
-
-= 0.9.5 =
-* Fix garbage characters of `get_country()` for ipinfo.io.
-
-= 0.9.4 =
-* Add `ip-geo-block-validate` hook and `apply_filters()` in order to add
-  another validation function.
-
-= 0.9.3 =
-* Change action hook `pre_comment_on_post` to `preprocess_comment`.
-* Add attribution links to appreciate providing the services. 
-
-= 0.9.2 =
-* Add a check of the supported type of IP address not to waste a request.
-
-= 0.9.1 =
-* Delete functions for MU, test, debug and ugly comments.
-
-= 0.9.0 =
-* Pre-release version.
 
 == Upgrade Notice ==

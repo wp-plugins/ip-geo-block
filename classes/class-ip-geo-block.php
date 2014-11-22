@@ -9,16 +9,21 @@
  * @copyright 2013, 2014 tokkonopapa
  */
 
+/**
+ * Default path to the database file
+ */
+define( 'IP_GEO_BLOCK_DB_DIR', IP_GEO_BLOCK_PATH . 'database/' );
+
 class IP_Geo_Block {
 
 	/**
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '1.2.1';
+	const VERSION = '1.3.0';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
-	const CACHE_KEY   = 'ip-geo-block-cache';
+	const CACHE_KEY   = 'ip_geo_block_cache';
 	const CRON_NAME   = 'ip_geo_block_cron';
 
 	/**
@@ -33,6 +38,41 @@ class IP_Geo_Block {
 		'statistics' => 'ip_geo_block_statistics',
 	);
 
+	/**
+	 * Initialize the plugin
+	 * 
+	 */
+	private function __construct() {
+		// Load plugin text domain
+		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
+
+		// check the package version and upgrade if needed
+		$settings = self::get_option( 'settings' );
+		if ( version_compare( $settings['version'], self::VERSION ) < 0 )
+			$settings = self::activate();
+
+		// the action hook which will be fired by cron job
+		if ( $settings['update']['auto'] && ! has_action( self::CRON_NAME ) )
+			add_action( self::CRON_NAME, array( 'IP_Geo_Block', 'download_database' ) );
+
+		if ( $settings['validation']['comment'] ) {
+			// Message text on comment form
+			if ( $settings['comment']['pos'] ) {
+				$pos = 'comment_form' . ( $settings['comment']['pos'] == 1 ? '_top' : '' );
+				add_action( $pos, array( $this, 'comment_form_message' ) );
+			}
+
+			// action hook from wp-comments-post.php @since 2.8.0, 'preprocess_comment'
+			add_action( 'pre_comment_on_post', array( $this, 'validate_comment' ) );
+		}
+
+		// action hook from xmlrpc.php @since 3.1.0
+		if ( $settings['validation']['xmlrpc'] ) {
+			add_filter( 'wp_xmlrpc_server_class', array( $this, 'validate_admin' ) );
+		}
+
+	}
+
 	// get default optional values
 	public static function get_default( $name = 'settings' ) {
 		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-opts.php' );
@@ -41,8 +81,7 @@ class IP_Geo_Block {
 
 	// get optional values from wp_options
 	public static function get_option( $name = 'settings' ) {
-		$option = get_option( self::$option_keys[ $name ] );
-		if ( FALSE === $option )
+		if ( FALSE === ( $option = get_option( self::$option_keys[ $name ] ) ) )
 			$option = self::get_default( $name );
 		return $option;
 	}
@@ -53,39 +92,10 @@ class IP_Geo_Block {
 		return apply_filters(
 			IP_Geo_Block::PLUGIN_SLUG . '-headers',
 			array(
-				'timeout' => $settings['timeout'],
+				'timeout' => (int)$settings['timeout'],
 				'user-agent' => "WordPress/$wp_version; " . self::PLUGIN_SLUG . ' ' . self::VERSION,
 			)
 		);
-	}
-
-	/**
-	 * Initialize the plugin
-	 * 
-	 */
-	private function __construct() {
-		// Load plugin text domain
-		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
-
-		$settings = self::get_option( 'settings' );
-
-		if ( version_compare( $settings['version'], '1.2.1' ) < 0 )
-			self::activate();
-
-		if ( $settings['validation']['comment'] ) {
-			// Message text on comment form
-			if ( $settings['comment']['pos'] ) {
-				$pos = 'comment_form' . ( $settings['comment']['pos'] == 1 ? '_top' : '' );
-				add_action( $pos, array( $this, 'comment_form_message' ) );
-			}
-
-			// action hook from wp-comments-post.php @since 2.8.0
-			add_action( 'pre_comment_on_post', array( $this, 'validate_comment' ) );
-		}
-
-		// action hook from download cron job
-		if ( $settings['update']['auto'] )
-			add_action( self::CRON_NAME, array( $this, 'download_database' ) );
 	}
 
 	/**
@@ -110,9 +120,13 @@ class IP_Geo_Block {
 		// upgrade options
 		$settings = IP_Geo_Block_Options::upgrade();
 
-		// schedule auto updating
-		if ( $settings['update']['auto'] )
+		// execute to download immediately
+		if ( $settings['update']['auto'] ) {
+			add_action( self::CRON_NAME, array( 'IP_Geo_Block', 'download_database' ) );
 			self::schedule_cron_job( $settings['update'], $settings['maxmind'], TRUE );
+		}
+
+		return $settings;
 	}
 
 	/**
@@ -121,8 +135,7 @@ class IP_Geo_Block {
 	 */
 	public static function deactivate( $network_wide = NULL ) {
 		// cancel schedule
-		if ( wp_next_scheduled( self::CRON_NAME ) ) // @since 2.1.0
-			wp_clear_scheduled_hook( self::CRON_NAME );
+		wp_clear_scheduled_hook( self::CRON_NAME ); // @since 2.1.0
 	}
 
 	/**
@@ -151,36 +164,33 @@ class IP_Geo_Block {
 	}
 
 	/**
-	 * Render a message to the comment form.
+	 * Render a text message to the comment form.
 	 *
 	 */
 	public function comment_form_message( $id ) {
 		$msg = self::get_option( 'settings' );
-		$msg = htmlspecialchars( $msg['comment']['msg'] );
+		$msg = esc_html( $msg['comment']['msg'] ); // Escaping for HTML blocks
 		if ( $msg ) echo '<p id="', self::PLUGIN_SLUG, '-msg">', $msg, '</p>';
 //		global $allowedtags;
 //		if ( $msg = wp_kses( $msg['comment']['msg'], $allowedtags ) ) echo $msg;
 	}
 
-	/**
-	 * Get country code from ip address
-	 *
-	 */
-	private function get_country( $ip, $settings ) {
-		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-api.php' );
+	public static function _get_geolocation( $ip, $settings, $list = array(), $callback = 'get_country' ) {
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
 		// make providers list
-		$list = array();
-		$geo = IP_Geo_Block_Provider::get_providers( 'key', TRUE, TRUE );
-		foreach ( $geo as $provider => $key ) {
-			if ( ! empty( $settings['providers'][ $provider ] ) || (
-			     ! isset( $settings['providers'][ $provider ] ) && NULL === $key ) ) {
-				$list[] = $provider;
+		if ( empty( $list ) || ! is_array( $list ) ) {
+			$list = array();
+			$geo = IP_Geo_Block_Provider::get_providers( 'key', TRUE, TRUE );
+			foreach ( $geo as $provider => $key ) {
+				if ( ! empty( $settings['providers'][ $provider ] ) || (
+				     ! isset( $settings['providers'][ $provider ] ) && NULL === $key ) ) {
+					$list[] = $provider;
+				}
 			}
 		}
 
 		// set arguments for wp_remote_get()
-		$ret = array( 'ip' => $ip );
 		$args = self::get_request_headers( $settings );
 
 		foreach ( $list as $provider ) {
@@ -192,17 +202,21 @@ class IP_Geo_Block {
 				$geo = new $name( $key ? $settings['providers'][ $provider ] : NULL );
 
 				// get country code
-				if ( $code = $geo->get_country( $ip, $args ) ) {
-					return $ret + array(
+				if ( $code = $geo->$callback( $ip, $args ) ) {
+					$ret = array(
+						'ip' => $ip,
 						'time' => microtime( TRUE ) - $time,
-						'code' => strtoupper( $code ),
+						'auth' => get_current_user_id(),
 						'provider' => $provider,
 					);
+					return is_array( $code ) ?
+						$ret + $code : 
+						$ret + array( 'code' => strtoupper( $code ) );
 				}
 			}
 		}
 
-		return $ret;
+		return array( 'ip' => $ip, 'errorMessage' => 'unknown' );
 	}
 
 	/**
@@ -217,7 +231,7 @@ class IP_Geo_Block {
 
 		if ( ! empty( $validate['code'] ) ) {
 			if ( 0 == $rule && FALSE !== strpos( $white, $validate['code'] ) ||
-				 1 == $rule && FALSE === strpos( $black, $validate['code'] ) )
+			     1 == $rule && FALSE === strpos( $black, $validate['code'] ) )
 				return $validate + array( 'result' => 'passed' ); // It may not be a spam
 			else
 				return $validate + array( 'result' => 'blocked'); // It could be a spam
@@ -234,9 +248,9 @@ class IP_Geo_Block {
 		$statistics = self::get_option( 'statistics' );
 
 		$result = isset( $validate['result'] ) ? $validate['result'] : 'passed';
-		++$statistics[ $result ];
 
-		if ( 'blocked' === $result ) {
+		if ( 'passed' !== $result ) {
+			++$statistics[ $result ];
 			$ip = isset( $validate['ip'] ) ? $validate['ip'] : $_SERVER['REMOTE_ADDR'];
 			$time = isset( $validate['time'] ) ? $validate['time'] : 0;
 			$country = isset( $validate['code'] ) ? $validate['code'] : 'ZZ';
@@ -267,7 +281,7 @@ class IP_Geo_Block {
 		nocache_headers(); // nocache and response code
 		switch ( (int)substr( "$code", 0, 1 ) ) {
 		  case 2: // 2xx Success
-			header( 'Refresh: 0; url=' . get_site_url(), TRUE, $code ); // @since 3.0
+			header( 'Refresh: 0; url=' . home_url(), TRUE, $code ); // @since 3.0
 			die();
 
 		  case 3: // 3xx Redirection
@@ -286,14 +300,27 @@ class IP_Geo_Block {
 	/**
 	 * Validate ip address
 	 *
-	 * @param string  $hook       a name to identify action hook applied in this call.
-	 * @param string  $mark_cache a symbolic charactor to mark on 'IP address in cache'.
-	 * @param boolean $save_cache cache the IP addresse regardless of validation result.
-	 * @param boolean $save_stat  update statistics regardless of validation result.
+	 * @param string $hook a name to identify action hook applied in this call.
+	 * @param array $settings option settings
 	 */
-	private function validate_ip( $hook, $mark_cache, $save_cache, $save_stat ) {
-		// This function may be called multiple times for each request.
-		static $num_of_calls = 0;
+	private function validate_ip( $hook, $settings ) {
+		// set ip address to be validated
+		$ips = array(
+			apply_filters( self::PLUGIN_SLUG . '-ip-addr', $_SERVER['REMOTE_ADDR'] )
+		);
+
+		// pick up all the ips in HTTP_X_FORWARDED_FOR
+		if ( $settings['validation']['proxy'] ) {
+			if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+				foreach ( explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ) as $ip ) {
+					$ip = trim( $ip );
+					if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ||
+						 filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
+						$ips[] = $ip;
+					}
+				}
+			}
+		}
 
 		// apply custom filter of validation
 		// @usage add_filter( "ip-geo-block-$hook", 'my_validation' );
@@ -304,75 +331,70 @@ class IP_Geo_Block {
 		//     'provider' => $provider, /* the name of validator               */
 		//     'result'   => $result,   /* 'passed', 'blocked' or 'unknown'    */
 		// );
-		$settings = self::get_option( 'settings' );
-		$ip = apply_filters( self::PLUGIN_SLUG . '-ip-addr', $_SERVER['REMOTE_ADDR'] );
-		$validate = $this->get_country( $ip, $settings );
-		$validate = apply_filters( self::PLUGIN_SLUG . "-$hook", $validate, $settings );
+		$tmp = self::PLUGIN_SLUG . "-$hook";
+		foreach ( array_unique( $ips ) as $ip ) {
+			$validate = self::_get_geolocation( $ip, $settings );
+			$validate = apply_filters( $tmp, $validate, $settings );
 
-		// if no 'result' then validate ip address by country
-		if ( empty( $validate['result'] ) )
-			$validate = $this->validate_country( $validate, $settings );
+			// if no 'result' then validate ip address by country
+			if ( empty( $validate['result'] ) )
+				$validate = $this->validate_country( $validate, $settings );
+
+			// if one of ips is blocked then stop
+			if ( $blocked = ( isset( $validate['result'] ) &&
+			     'passed' !== $validate['result'] ) )
+				break;
+		}
 
 		// update cache
-		$passed = ( 'passed' === $validate['result'] );
-		if ( $save_cache || ! $passed )
-			IP_Geo_Block_API_Cache::update_cache(
-				$validate['ip'],
-				array(
-					'code' => $validate['code'] . $mark_cache,
-					'call' => $num_of_calls++,
-					'auth' => is_user_logged_in(),
-				),
-				$settings
+		IP_Geo_Block_API_Cache::update_cache( $hook, $validate, $settings );
+
+		if ( $blocked ) {
+			// update statistics
+			if ( $settings['save_statistics'] )
+				$this->update_statistics( $validate );
+
+			// send response code to refuse
+			$this->send_response(
+				$settings['response_code'],
+				__( 'Sorry, but you cannot be accepted.', self::TEXT_DOMAIN )
 			);
-
-		// update statistics
-		if ( $settings['save_statistics'] && $save_stat )
-			$this->update_statistics( $validate );
-
-		// validation succeeded
-		if ( $passed ) return;
-
-		// update statistics
-		if ( $settings['save_statistics'] && ! $save_stat )
-			$this->update_statistics( $validate );
-
-		// send response code to refuse
-		$this->send_response(
-			$settings['response_code'],
-			__( 'Sorry, but you cannot be accepted.', self::TEXT_DOMAIN )
-		);
+		}
 	}
 
 	/**
 	 * Validate ip address on comment, login, admin
-	 *                  ip address       statistics
-	 * non-login users  cached           saved
-	 * login users      cached / hidden  not saved
+	 *
 	 */
 	public function validate_comment() {
-		$this->validate_ip( 'comment', NULL, TRUE, TRUE );
+		$this->validate_ip( 'comment', self::get_option( 'settings' ) );
+	}
+
+	public function validate_admin( $something ) {
+		if ( defined( 'XMLRPC_REQUEST' ) ) {
+			global $HTTP_RAW_POST_DATA;
+			if ( strpos( $HTTP_RAW_POST_DATA, '>pingback.ping<' ) !== FALSE )
+				$this->validate_ip( 'comment', self::get_option( 'settings' ) );
+		}
+		return $something; // pass through
 	}
 
 	/**
-	 * Schedule controller.
+	 * Cron scheduler.
 	 *
 	 */
 	public static function schedule_cron_job( &$update, $db, $immediate = FALSE ) {
-		$schedule = wp_next_scheduled( self::CRON_NAME ); // @since 2.1.0
+		wp_clear_scheduled_hook( self::CRON_NAME ); // @since 2.1.0
 
-		if ( $schedule && ! $update['auto'] )
-			wp_clear_scheduled_hook( self::CRON_NAME );
-
-		else if ( ! $schedule && $update['auto'] ) {
+		if ( $update['auto'] ) {
 			$now = time();
-			$cycle = DAY_IN_SECONDS * $update['cycle'];
+			$cycle = DAY_IN_SECONDS * (int)$update['cycle'];
 
-			if ( FALSE === $immediate &&
-				$now - $db['ipv4_last'] < $cycle &&
-				$now - $db['ipv6_last'] < $cycle ) {
+			if ( ! $immediate &&
+				$now - (int)$db['ipv4_last'] < $cycle &&
+				$now - (int)$db['ipv6_last'] < $cycle ) {
 				$update['retry'] = 0;
-				$next = max( $db['ipv4_last'], $db['ipv6_last'] ) +
+				$next = max( (int)$db['ipv4_last'], (int)$db['ipv6_last'] ) +
 					$cycle + rand( DAY_IN_SECONDS, DAY_IN_SECONDS * 6 );
 			} else {
 				++$update['retry'];
@@ -387,7 +409,7 @@ class IP_Geo_Block {
 	 * Database auto downloader.
 	 *
 	 */
-	public function download_database( $only = NULL ) {
+	public static function download_database( $only = NULL ) {
 		require_once( IP_GEO_BLOCK_PATH . 'includes/download.php' );
 
 		// download database files
@@ -401,7 +423,7 @@ class IP_Geo_Block {
 		// re-schedule cron job
 		self::schedule_cron_job( $settings['update'], $settings['maxmind'] );
 
-		// limit options to be updated
+		// update only the portion related to Maxmind
 		if ( $only )
 			$settings[ $only ] = TRUE;
 
