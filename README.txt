@@ -1,45 +1,45 @@
 === IP Geo Block ===
 Contributors: tokkonopapa
 Donate link:
-Tags: comment, pingback, spam, IP address, geolocation, xmlrpc
+Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc
 Requires at least: 3.5
 Tested up to: 4.0.1
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress plugin that will block any comment and pingback spams posted from 
+A WordPress plugin that will block any comment, pingback and trackback spams posted from 
 outside of your nation.
 
 == Description ==
 
 This plugin will examine a country code based on the IP address. If the 
-comment or pingback comes from specific country, it will be blocked before 
-Akismet validate it.
+comment, pingback or trackback comes from specific country, it will be blocked 
+before Akismet validate it.
 
 = Features =
 
-1. Free IP Geolocation database and REST APIs are installed in this plugin 
-to get a country code from an IP address. There are two types of API which 
-support only IPv4 or both IPv4 and IPv6. This plugin will automatically 
-select an appropriate API.
+1. Access to the `wp-comments-post.php` and `xmlrpc.php` will be validated by 
+means of IP address. Free IP Geolocation database and REST APIs are installed 
+in this plugin to get a country code from an IP address. There are two types 
+of API which support only IPv4 or both IPv4 and IPv6. This plugin will 
+automatically select an appropriate API.
 
-2. [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention") 
+2. Cache mechanism with transient API for the fetched IP addresses has been 
+equipped to reduce load on the server against the burst accesses with a short 
+period of time.
+
+3. Custom validation function can be added by `add_filter()` with predefined 
+filter hook.
+
+4. [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention") 
 GeoLite free database for IPv4 and IPv6 will be downloaded and updated 
-(once a month) automatically.<br><br>And if you have correctly installed 
+(once a month) automatically. And if you have correctly installed 
 one of the IP2Location plugins (
     [IP2Location Tags](http://wordpress.org/plugins/ip2location-tags/ "WordPress - IP2Location Tags - WordPress Plugins"),
     [IP2Location Variables](http://wordpress.org/plugins/ip2location-variables/ "WordPress - IP2Location Variables - WordPress Plugins"),
     [IP2Location Country Blocker](http://wordpress.org/plugins/ip2location-country-blocker/ "WordPress - IP2Location Country Blocker - WordPress Plugins")
 ), this plugin uses its local database prior to the REST APIs.
-After installing these IP2Location plugins, you should be once deactivated 
-and then activated in order to set the path to `database.bin`.
-
-3. Cache mechanism with transient API for the fetched IP addresses has been 
-equipped to reduce load on the server against burst access within a short time.
-
-4. Custom validation function can be added using predefined filter hook with 
-`add_filter()`.
 
 = Development =
 
@@ -83,9 +83,9 @@ And also thanks for providing these great services and REST APIs for free.
     And `ip-api.com` and `Smart-IP.net` require non-commercial use.
 
 * **Validation settings**  
-    `XML-RPC` is for validation of pingback spam. If `HTTP_X_FORWARDED_FOR` is 
-    checked, all the IP addresses in `$_SERVER['HTTP_X_FORWARDED_FOR']` will be
-    validated.
+    `XML-RPC` is for validation of pingback spam. Additional IP addresses will 
+    be validated if some of keys for `$_SERVER` variable are specified in 
+    `$_SERVER keys for extra IPs`.
 
 * **Text position on comment form**  
     If you want to put some text message on your comment form, please select
@@ -180,7 +180,8 @@ Yes, here is the list of all hooks.
 
 * `ip-geo-block-ip-addr`          : IP address of accessor.
 * `ip-geo-block-headers`          : compose http request headers.
-* `ip-geo-block-comment`          : validate post to `wp-comments-post.php` and `pingback.ping` to `xmlrpc.php`.
+* `ip-geo-block-comment`          : validate IP adress at `wp-comments-post.php`.
+* `ip-geo-block-xmlrpc`           : validate IP adress at `xmlrpc.php`.
 * `ip-geo-block-maxmind-dir`      : absolute path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
 * `ip-geo-block-maxmind-zip-ipv6` : url to Maxmind GeoLite DB zip file for IPv6.
@@ -189,6 +190,9 @@ Yes, here is the list of all hooks.
 For more details, see `samples.php` bundled within this package.
 
 == Other Notes ==
+
+After installing these IP2Location plugins, you should be once deactivated 
+and then activated in order to set the path to `database.bin`.
 
 If you do not want to keep the IP2Location plugins (
     [IP2Location Tags](http://wordpress.org/plugins/ip2location-tags/ "WordPress - IP2Location Tags - WordPress Plugins"),
@@ -205,6 +209,14 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 4. **IP Geo Plugin** - Attribution.
 
 == Changelog ==
+
+= 1.3.1 =
+* **New feature:** Added validation of trackback spam.
+* Added `$_SERVER keys for extra IPs` into options to validate additional 
+  IP addresses.
+* Updated FooTable to 2.0.3.
+* Removed some redundant codes and corrected all PHP notices and warnings 
+  which had been suppressed by WordPress.
 
 = 1.3.0 =
 * **New feature:** Added validation of pingback.ping through `xmlrpc.php` and
