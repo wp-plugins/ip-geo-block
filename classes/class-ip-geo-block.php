@@ -20,7 +20,7 @@ class IP_Geo_Block {
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '1.3.0';
+	const VERSION = '1.3.1';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
 	const CACHE_KEY   = 'ip_geo_block_cache';
@@ -43,7 +43,7 @@ class IP_Geo_Block {
 	 * 
 	 */
 	private function __construct() {
-		// Load plugin text domain
+		// load plugin text domain
 		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
 
 		// check the package version and upgrade if needed
@@ -56,21 +56,21 @@ class IP_Geo_Block {
 			add_action( self::CRON_NAME, array( 'IP_Geo_Block', 'download_database' ) );
 
 		if ( $settings['validation']['comment'] ) {
-			// Message text on comment form
+			// message text on comment form
 			if ( $settings['comment']['pos'] ) {
 				$pos = 'comment_form' . ( $settings['comment']['pos'] == 1 ? '_top' : '' );
 				add_action( $pos, array( $this, 'comment_form_message' ) );
 			}
 
-			// action hook from wp-comments-post.php @since 2.8.0, 'preprocess_comment'
+			// wp-comments-post.php @since 2.8.0, wp-includes/comment.php @since 1.5.0
 			add_action( 'pre_comment_on_post', array( $this, 'validate_comment' ) );
+			add_filter( 'preprocess_comment', array( $this, 'validate_trackback' ) );
 		}
 
 		// action hook from xmlrpc.php @since 3.1.0
 		if ( $settings['validation']['xmlrpc'] ) {
 			add_filter( 'wp_xmlrpc_server_class', array( $this, 'validate_admin' ) );
 		}
-
 	}
 
 	// get default optional values
@@ -83,6 +83,7 @@ class IP_Geo_Block {
 	public static function get_option( $name = 'settings' ) {
 		if ( FALSE === ( $option = get_option( self::$option_keys[ $name ] ) ) )
 			$option = self::get_default( $name );
+
 		return $option;
 	}
 
@@ -175,12 +176,20 @@ class IP_Geo_Block {
 //		if ( $msg = wp_kses( $msg['comment']['msg'], $allowedtags ) ) echo $msg;
 	}
 
-	public static function _get_geolocation( $ip, $settings, $list = array(), $callback = 'get_country' ) {
+	/**
+	 * Get geolocation and country code from an ip address
+	 *
+	 */
+	public static function get_geolocation( $ip, $list = array() ) {
+		$settings = self::get_option( 'settings' );
+		return self::_get_geolocation( $ip, $settings, $list, 'get_location' );
+	}
+
+	private static function _get_geolocation( $ip, $settings, $list = array(), $callback = 'get_country' ) {
 		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
 		// make providers list
-		if ( empty( $list ) || ! is_array( $list ) ) {
-			$list = array();
+		if ( empty( $list ) ) {
 			$geo = IP_Geo_Block_Provider::get_providers( 'key', TRUE, TRUE );
 			foreach ( $geo as $provider => $key ) {
 				if ( ! empty( $settings['providers'][ $provider ] ) || (
@@ -205,10 +214,11 @@ class IP_Geo_Block {
 				if ( $code = $geo->$callback( $ip, $args ) ) {
 					$ret = array(
 						'ip' => $ip,
-						'time' => microtime( TRUE ) - $time,
 						'auth' => get_current_user_id(),
+						'time' => microtime( TRUE ) - $time,
 						'provider' => $provider,
 					);
+
 					return is_array( $code ) ?
 						$ret + $code : 
 						$ret + array( 'code' => strtoupper( $code ) );
@@ -216,7 +226,7 @@ class IP_Geo_Block {
 			}
 		}
 
-		return array( 'ip' => $ip, 'errorMessage' => 'unknown' );
+		return array( 'ip' => $ip, 'code' => 'ZZ', 'errorMessage' => 'unknown' );
 	}
 
 	/**
@@ -229,15 +239,18 @@ class IP_Geo_Block {
 		$white = $settings['white_list'];
 		$black = $settings['black_list'];
 
-		if ( ! empty( $validate['code'] ) ) {
+		if ( empty( $white ) && empty( $black ) )
+			return $validate + array( 'result' => 'passed' );
+
+		if ( 'ZZ' !== $validate['code'] ) {
 			if ( 0 == $rule && FALSE !== strpos( $white, $validate['code'] ) ||
 			     1 == $rule && FALSE === strpos( $black, $validate['code'] ) )
 				return $validate + array( 'result' => 'passed' ); // It may not be a spam
 			else
 				return $validate + array( 'result' => 'blocked'); // It could be a spam
+		} else {
+			return $validate + array( 'result' => 'unknown' ); // It can not be decided
 		}
-
-		return $validate + array( 'result' => 'unknown' ); // It can not be decided
 	}
 
 	/**
@@ -247,28 +260,20 @@ class IP_Geo_Block {
 	private function update_statistics( $validate ) {
 		$statistics = self::get_option( 'statistics' );
 
-		$result = isset( $validate['result'] ) ? $validate['result'] : 'passed';
+		if ( filter_var( $validate['ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) )
+			$statistics['IPv4']++;
+		else if ( filter_var( $validate['ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) )
+			$statistics['IPv6']++;
 
-		if ( 'passed' !== $result ) {
-			++$statistics[ $result ];
-			$ip = isset( $validate['ip'] ) ? $validate['ip'] : $_SERVER['REMOTE_ADDR'];
-			$time = isset( $validate['time'] ) ? $validate['time'] : 0;
-			$country = isset( $validate['code'] ) ? $validate['code'] : 'ZZ';
-			$provider = isset( $validate['provider'] ) ? $validate['provider'] : 'ZZ';
+		@$statistics[ $validate['result'] ]++;
+		@$statistics['countries'][ $validate['code'] ]++;
 
-			if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) )
-				++$statistics['IPv4'];
-			else if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) )
-				++$statistics['IPv6'];
+		$provider = $validate['provider'] ? $validate['provider'] : 'ZZ';
+		if ( empty( $statistics['providers'][ $provider ] ) )
+			$statistics['providers'][ $provider ] = array( 'count' => 0, 'time' => 0.0 );
 
-			++$statistics['countries'][ $country ];
-
-			if ( empty( $statistics['providers'][ $provider ] ) )
-				$statistics['providers'][ $provider ] = array( 'count' => 0, 'time' => 0.0 );
-
-			$statistics['providers'][ $provider ]['count']++;
-			$statistics['providers'][ $provider ]['time'] += (float)$time;
-		}
+		$statistics['providers'][ $provider ]['count']++;
+		$statistics['providers'][ $provider ]['time'] += (float)$validate['time'];
 
 		update_option( self::$option_keys['statistics'], $statistics );
 	}
@@ -294,6 +299,7 @@ class IP_Geo_Block {
 		  default: // 5xx Server Error
 			status_header( $code ); // @since 2.0.0
 			die();
+			break;
 		}
 	}
 
@@ -304,18 +310,16 @@ class IP_Geo_Block {
 	 * @param array $settings option settings
 	 */
 	private function validate_ip( $hook, $settings ) {
-		// set ip address to be validated
+		// set IP address to be validated
 		$ips = array(
 			apply_filters( self::PLUGIN_SLUG . '-ip-addr', $_SERVER['REMOTE_ADDR'] )
 		);
 
-		// pick up all the ips in HTTP_X_FORWARDED_FOR
-		if ( $settings['validation']['proxy'] ) {
-			if ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-				foreach ( explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ) as $ip ) {
-					$ip = trim( $ip );
-					if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ||
-						 filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
+		// pick up all the IPs in HTTP_X_FORWARDED_FOR, HTTP_CLIENT_IP and etc.
+		foreach ( explode( ',', $settings['validation']['proxy'] ) as $var ) {
+			if ( isset( $_SERVER[ $var ] ) ) {
+				foreach ( explode( ',', $_SERVER[ $var ] ) as $ip ) {
+					if ( filter_var( $ip = trim( $ip ), FILTER_VALIDATE_IP ) ) {
 						$ips[] = $ip;
 					}
 				}
@@ -331,19 +335,19 @@ class IP_Geo_Block {
 		//     'provider' => $provider, /* the name of validator               */
 		//     'result'   => $result,   /* 'passed', 'blocked' or 'unknown'    */
 		// );
-		$tmp = self::PLUGIN_SLUG . "-$hook";
+		$var = self::PLUGIN_SLUG . "-$hook";
 		foreach ( array_unique( $ips ) as $ip ) {
 			$validate = self::_get_geolocation( $ip, $settings );
-			$validate = apply_filters( $tmp, $validate, $settings );
+			$validate = apply_filters( $var, $validate, $settings );
 
 			// if no 'result' then validate ip address by country
 			if ( empty( $validate['result'] ) )
 				$validate = $this->validate_country( $validate, $settings );
 
-			// if one of ips is blocked then stop
-			if ( $blocked = ( isset( $validate['result'] ) &&
-			     'passed' !== $validate['result'] ) )
+			// if one of IPs is blocked then stop
+			if ( $blocked = ( 'passed' !== $validate['result'] ) ) {
 				break;
+			}
 		}
 
 		// update cache
@@ -363,20 +367,37 @@ class IP_Geo_Block {
 	}
 
 	/**
-	 * Validate ip address on comment, login, admin
+	 * Validate ip address at comment, login, admin, xmlrpc
 	 *
 	 */
 	public function validate_comment() {
 		$this->validate_ip( 'comment', self::get_option( 'settings' ) );
 	}
 
+	public function validate_trackback( $commentdata ) {
+		if ( 'trackback' === $commentdata['comment_type'] )
+			$this->validate_ip( 'comment', self::get_option( 'settings' ) );
+
+		return $commentdata;
+	}
+
 	public function validate_admin( $something ) {
-		if ( defined( 'XMLRPC_REQUEST' ) ) {
-			global $HTTP_RAW_POST_DATA;
-			if ( strpos( $HTTP_RAW_POST_DATA, '>pingback.ping<' ) !== FALSE )
-				$this->validate_ip( 'comment', self::get_option( 'settings' ) );
-		}
+		add_filter( self::PLUGIN_SLUG . "-xmlrpc", array( $this, 'auth_check' ), 10, 2 );
+		$this->validate_ip( 'xmlrpc', self::get_option( 'settings' ) );
+
 		return $something; // pass through
+	}
+
+	/**
+	 * Authentication handling
+	 *
+	 */
+	public function auth_check( $validate, $settings ) {
+		global $HTTP_RAW_POST_DATA;
+		if ( FALSE === strpos( $HTTP_RAW_POST_DATA, '>pingback.ping<' ) )
+			$validate['result'] = 'passed';
+
+		return $validate;
 	}
 
 	/**

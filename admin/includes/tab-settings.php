@@ -88,8 +88,7 @@ function ip_geo_block_tab_settings( $context ) {
 	// same as in tab-accesslog.php
 	$title = array(
 		'comment' => __( '<dfn title="Validate post to wp-comments-post.php">Comment post</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'xmlrpc'  => __( '<dfn title="Validate pinback.ping to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'proxy'  => __( '<dfn title="Validate all IPs in HTTP_X_FORWARDED_FOR">HTTP_X_FORWARDED_FOR</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'xmlrpc'  => __( '<dfn title="Validate pingback.ping to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 	);
 
 	$field = 'validation';
@@ -113,7 +112,7 @@ function ip_geo_block_tab_settings( $context ) {
 	$field = 'save_statistics';
 	add_settings_field(
 		$option_name . "_$field",
-		__( 'Save statistics of validation', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Record validation statistics', IP_Geo_Block::TEXT_DOMAIN ),
 		array( $context, 'callback_field' ),
 		$option_slug,
 		$section,
@@ -122,6 +121,24 @@ function ip_geo_block_tab_settings( $context ) {
 			'option' => $option_name,
 			'field' => $field,
 			'value' => $options[ $field ],
+		)
+	);
+
+	$key = 'proxy';
+	$field = 'validation';
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		__( '<dfn title="ex) HTTP_X_FORWARDED_FOR">$_SERVER keys for extra IPs</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'text',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'after' => '<span style="margin-left: 0.2em">' . __( '(comma separated)', IP_Geo_Block::TEXT_DOMAIN ) . '</span>',
 		)
 	);
 

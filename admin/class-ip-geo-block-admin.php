@@ -65,7 +65,6 @@ class IP_Geo_Block_Admin {
 	 *
 	 */
 	public static function get_instance() {
-
 		// If the single instance hasn't been set, set it now.
 		if ( null == self::$instance )
 			self::$instance = new self;
@@ -79,7 +78,7 @@ class IP_Geo_Block_Admin {
 	 */
 	public function admin_notice() {
 		$info = $this->get_plugin_info();
-		$msg = __( 'You need WordPress 3.5+', IP_Geo_Block::TEXT_DOMAIN );
+		$msg = __( 'You need WordPress 3.7+', IP_Geo_Block::TEXT_DOMAIN );
 		echo "\n<div class=\"error\"><p>", $info['Name'], ": $msg</p></div>\n";
 	}
 
@@ -117,6 +116,12 @@ class IP_Geo_Block_Admin {
 			// js for google map
 			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-google-map',
 				'http://maps.google.com/maps/api/js?sensor=false',
+				array( 'jquery' ), IP_Geo_Block::VERSION
+			);
+
+			// js for footable https://github.com/bradvin/FooTable
+			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-footable-js',
+				plugins_url( 'js/footable.all.min.js', __FILE__ ),
 				array( 'jquery' ), IP_Geo_Block::VERSION
 			);
 
@@ -195,8 +200,9 @@ class IP_Geo_Block_Admin {
 	 */
 	public function display_plugin_admin_page( $tab = 0 ) {
 		$tab = isset( $_GET['tab'] ) ? (int)$_GET['tab'] : 0;
-		$tab = min( 3, max( 0, $tab ) );
-		$option_slug = $this->option_slug[ 1 === $tab ? 'statistics': 'settings' ]; ?>
+		$tab = min( 4, max( 0, $tab ) );
+		$option_slug = $this->option_slug[ 1 === $tab ? 'statistics': 'settings' ];
+?>
 <div class="wrap">
 	<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
 	<h2 class="nav-tab-wrapper">
@@ -230,7 +236,7 @@ class IP_Geo_Block_Admin {
 	 */
 	public function register_admin_settings() {
 		$tab = isset( $_GET['tab'] ) ? (int)$_GET['tab'] : 0;
-		switch( min( 3, max( 0, $tab ) ) ) {
+		switch( min( 4, max( 0, $tab ) ) ) {
 		  case 0:
 			// Settings
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-settings.php' );
@@ -326,7 +332,7 @@ class IP_Geo_Block_Admin {
 			$args['value'] = $args['text'];
 
 		  case 'text': ?>
-<input type="text" class="regular-text code" id="<?php echo $id, $sub_id; ?>" name="<?php echo $name, $sub_name; ?>" value="<?php echo esc_attr( $args['value'] ); ?>"<?php disabled( $args['disabled'], TRUE );
+<input type="text" class="regular-text code" id="<?php echo $id, $sub_id; ?>" name="<?php echo $name, $sub_name; ?>" value="<?php echo esc_attr( $args['value'] ); ?>"<?php disabled( ! empty( $args['disabled'] ), TRUE );
 ?> />
 <?php
 			break; // disabled @since 3.0
@@ -369,7 +375,8 @@ class IP_Geo_Block_Admin {
 		$default = IP_Geo_Block::get_default( $option_name );
 
 		// extract key with 'only-' on its top
-		$only = array_shift( array_keys( array_diff_key( $input, $output ) ) );
+		$only = array_keys( array_diff_key( $input, $output ) );
+		$only = array_shift( $only );
 		$only = strpos( $only, 'only-' ) === 0 ? substr( $only, 5 ) : FALSE;
 
 		/**
@@ -379,6 +386,12 @@ class IP_Geo_Block_Admin {
 			// skip except specified key
 			if ( $only && $only !== $key ) 
 				continue;
+
+			// delete old key
+			if ( ! array_key_exists( $key, $default ) ) {
+				unset( $output[ $key ] );
+				continue;
+			}
 
 			switch( $key ) {
 			  case 'providers':
@@ -445,8 +458,14 @@ class IP_Geo_Block_Admin {
 
 				// sub field
 				else foreach ( array_keys( $value ) as $sub ) {
+					// delete old key
+					if ( ! array_key_exists( $sub, $default[ $key ] ) ) {
+						unset( $output[ $key ][ $sub ] );
+						continue;
+					}
+
 					// for checkbox
-					if ( is_bool( $default[ $key ][ $sub ] ) ) {
+					else if ( is_bool( $default[ $key ][ $sub ] ) ) {
 						$output[ $key ][ $sub ] = ! empty( $input[ $key ][ $sub ] );
 					}
 
@@ -457,6 +476,10 @@ class IP_Geo_Block_Admin {
 							sanitize_text_field(
 								@preg_replace( '/\s/', '', $input[ $key ][ $sub ] )
 							);
+						if ( 'proxy' === $sub ) {
+							$output[ $key ][ $sub ] = @preg_replace( '/[^\w,]/', '',
+								strtoupper( $output[ $key ][ $sub ] ) );
+						}
 					}
 				}
 				break;
@@ -498,7 +521,7 @@ class IP_Geo_Block_Admin {
 		}
 
 		// download database
-		else if ( isset( $_POST['download'] ) ) {
+		else if ( isset( $_POST['download'] ) && 'maxmind' === $_POST['download'] ) {
 			$res = IP_Geo_Block::download_database( 'only-maxmind' ); // download now
 		}
 
@@ -536,21 +559,20 @@ class IP_Geo_Block_Admin {
 			}
 		}
 
-		// Clear
-		else if ( isset( $_POST['clear'] ) ) {
-			switch ( $_POST['clear'] ) {
-			  case 'statistics':
-				// set default values
-				update_option(
-					$this->option_name['statistics'],
-					IP_Geo_Block::get_default( 'statistics' )
-				);
+		// Clear statistics
+		else if ( isset( $_POST['statistics'] ) && 'clear' === $_POST['statistics'] ) {
+			// set default values
+			update_option(
+				$this->option_name['statistics'],
+				IP_Geo_Block::get_default( 'statistics' )
+			);
 
-				// delete cache of IP address
-				delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
-				$res = array( 'refresh' => "options-general.php?page=" . IP_Geo_Block::PLUGIN_SLUG . "&tab=1" );
-				break;
-			}
+			// delete cache of IP address
+			delete_transient( IP_Geo_Block::CACHE_KEY ); // @since 2.8
+			$res = array(
+				'page' => "options-general.php?page=" . IP_Geo_Block::PLUGIN_SLUG,
+				'tab' => "tab=1"
+			);
 		}
 
 		if ( isset( $res ) )
