@@ -2,14 +2,14 @@
 Contributors: tokkonopapa
 Donate link:
 Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc
-Requires at least: 3.5
-Tested up to: 4.0.1
-Stable tag: 1.3.1
+Requires at least: 3.7
+Tested up to: 4.1
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress plugin that will block any comment, pingback and trackback spams posted from 
-outside of your nation.
+A WordPress plugin that will blocks any comment, pingback and trackback spams 
+posted from outside of your nation.
 
 == Description ==
 
@@ -19,20 +19,23 @@ before Akismet validate it.
 
 = Features =
 
-1. Access to the `wp-comments-post.php` and `xmlrpc.php` will be validated by 
-means of IP address. Free IP Geolocation database and REST APIs are installed 
-in this plugin to get a country code from an IP address. There are two types 
-of API which support only IPv4 or both IPv4 and IPv6. This plugin will 
-automatically select an appropriate API.
+1. Access to the `wp-comments-post.php` and `xmlrpc.php` will be validated 
+by means of IP address. Free IP Geolocation database and REST APIs are 
+installed in this plugin to get a country code from an IP address. There are 
+two types of API which support only IPv4 or both IPv4 and IPv6. This plugin 
+will automatically select an appropriate API.
 
 2. Cache mechanism with transient API for the fetched IP addresses has been 
 equipped to reduce load on the server against the burst accesses with a short 
 period of time.
 
-3. Custom validation function can be added by `add_filter()` with predefined 
+3. Validation logs will be recorded into MySQL data table to analyze posting 
+pattern under the specified condition.
+
+4. Custom validation function can be added by `add_filter()` with predefined 
 filter hook.
 
-4. [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention") 
+5. [MaxMind](http://www.maxmind.com "MaxMind - IP Geolocation and Online Fraud Prevention") 
 GeoLite free database for IPv4 and IPv6 will be downloaded and updated 
 (once a month) automatically. And if you have correctly installed 
 one of the IP2Location plugins (
@@ -40,12 +43,6 @@ one of the IP2Location plugins (
     [IP2Location Variables](http://wordpress.org/plugins/ip2location-variables/ "WordPress - IP2Location Variables - WordPress Plugins"),
     [IP2Location Country Blocker](http://wordpress.org/plugins/ip2location-country-blocker/ "WordPress - IP2Location Country Blocker - WordPress Plugins")
 ), this plugin uses its local database prior to the REST APIs.
-
-= Development =
-
-Development of this plugin is promoted on 
-    [GitHub](https://github.com/tokkonopapa/WordPress-IP-Geo-Block "tokkonopapa/WordPress-IP-Geo-Block - GitHub").
-All contributions will always be welcome.
 
 = Attribution =
 
@@ -64,6 +61,12 @@ And also thanks for providing these great services and REST APIs for free.
 * [http://www.geoplugin.com/](http://www.geoplugin.com/ "geoPlugin to geolocate your visitors") (IPv4, IPv6 / free, need an attribution link)
 * [http://ip-api.com/](http://ip-api.com/ "IP-API.com - Free Geolocation API") (IPv4, IPv6 / free for non-commercial use)
 * [http://ipinfodb.com/](http://ipinfodb.com/ "IPInfoDB | Free IP Address Geolocation Tools") (IPv4, IPv6 / free for registered user, need API key)
+
+= Development =
+
+Development of this plugin is promoted on 
+    [GitHub](https://github.com/tokkonopapa/WordPress-IP-Geo-Block "tokkonopapa/WordPress-IP-Geo-Block - GitHub").
+All contributions will always be welcome.
 
 == Installation ==
 
@@ -205,16 +208,22 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 
 1. **IP Geo Plugin** - Settings.
 2. **IP Geo Plugin** - Statistics.
-3. **IP Geo Plugin** - Search.
-4. **IP Geo Plugin** - Attribution.
+3. **IP Geo Plugin** - Logs.
+4. **IP Geo Plugin** - Search.
+5. **IP Geo Plugin** - Attribution.
 
 == Changelog ==
+
+= 1.4.0 =
+* **New feature:** Added a new class for recording the validation logs to 
+  analyze posting pattern.
+* Fixed an issue of not being set the own country code at first installation.
+* Fixed an error which occurs when ip address is unknown.
 
 = 1.3.1 =
 * **New feature:** Added validation of trackback spam.
 * Added `$_SERVER keys for extra IPs` into options to validate additional 
   IP addresses.
-* Updated FooTable to 2.0.3.
 * Removed some redundant codes and corrected all PHP notices and warnings 
   which had been suppressed by WordPress.
 

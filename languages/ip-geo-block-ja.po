@@ -4,8 +4,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IP Geo Block 1.4.0\n"
 "Report-Msgid-Bugs-To: https://github.com/tokkonopapa/WordPress-IP-Geo-Block\n"
-"POT-Creation-Date: 2014-12-07 14:14+0900\n"
-"PO-Revision-Date: 2014-12-07 14:25+0900\n"
+"POT-Creation-Date: 2014-12-30 18:31+0900\n"
+"PO-Revision-Date: 2014-12-30 19:19+0900\n"
 "Last-Translator: tokkonopapa <tokkonopapa@yahoo.com>\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -21,23 +21,23 @@ msgstr ""
 
 # description
 msgid ""
-"A WordPress plugin that will block any comment and pingback spams posted "
-"from outside of your nation."
+"A WordPress plugin that will blocks any comment, pingback and trackback "
+"spams posted from outside of your nation."
 msgstr ""
-"IPアドレスの地理的位置情報に基づいて自国以外から投稿されるコメントやピンバッ"
-"クのスパムをブロックします。"
+"IPアドレスの地理的位置情報に基き、自国以外から投稿されるコメントやピンバッ"
+"ク、トラックバックのスパムをブロックします。"
 
-#: admin/class-ip-geo-block-admin.php:82
+#: admin/class-ip-geo-block-admin.php:81
 msgid "You need WordPress 3.7+"
 msgstr "WordPress 3.7&thinsp;以上が必要です"
 
 #: admin/class-ip-geo-block-admin.php:157
-#: admin/class-ip-geo-block-admin.php:209
+#: admin/class-ip-geo-block-admin.php:211
 msgid "Settings"
 msgstr "設定"
 
 #: admin/class-ip-geo-block-admin.php:171
-msgid "Contribute on GitHub"
+msgid "Contribute at GitHub"
 msgstr "開発に参加"
 
 #: admin/class-ip-geo-block-admin.php:189
@@ -45,7 +45,7 @@ msgstr "開発に参加"
 msgid "IP Geo Block"
 msgstr "IP Geo Block"
 
-#: admin/class-ip-geo-block-admin.php:210
+#: admin/class-ip-geo-block-admin.php:212
 msgid "Statistics"
 msgstr "統計"
 
@@ -53,32 +53,31 @@ msgstr "統計"
 msgid "Logs"
 msgstr "ログ"
 
-#: admin/class-ip-geo-block-admin.php:217
+#: admin/class-ip-geo-block-admin.php:216
 msgid "Search"
 msgstr "検索"
 
-#: admin/class-ip-geo-block-admin.php:218
+#: admin/class-ip-geo-block-admin.php:217
 msgid "Attribution"
 msgstr "リンク"
 
-#: admin/class-ip-geo-block-admin.php:283
+#: admin/class-ip-geo-block-admin.php:281
 msgid "Thanks for providing these great services for free."
 msgstr ""
 "すばらしいサービスの提供元である以下のサイトに、敬意と感謝の意を表します！"
 
-#: admin/class-ip-geo-block-admin.php:284
+#: admin/class-ip-geo-block-admin.php:282
 msgid ""
 "(Most browsers will redirect you to each site without referrer when you "
 "click the link.)"
 msgstr ""
-"（ほとんどのブラウザでは、リンクをクリックしても参照元を残さずに各サイトにリ"
-"ダイレクトできます。）"
+"（ほとんどのブラウザでは、参照元を残さずに各サイトにリダイレクトできます。）"
 
-#: admin/class-ip-geo-block-admin.php:354
+#: admin/class-ip-geo-block-admin.php:352
 msgid "Enable"
 msgstr "有効"
 
-#: admin/class-ip-geo-block-admin.php:505
+#: admin/class-ip-geo-block-admin.php:502
 msgid "Successfully updated"
 msgstr "更新に成功しました"
 
@@ -104,7 +103,7 @@ msgid "<dfn title=\"Validate pingback.ping to xmlrpc.php\">XML-RPC</dfn>"
 msgstr "<dfn title=\"xmlrpc.phpへのアクセスを検証\">XML-RPC</dfn>"
 
 #: admin/includes/tab-accesslog.php:52
-msgid "Time of date"
+msgid "Date"
 msgstr "日時"
 
 #: admin/includes/tab-accesslog.php:53 admin/includes/tab-geolocation.php:56
@@ -113,8 +112,8 @@ msgid "IP address"
 msgstr "IPアドレス"
 
 #: admin/includes/tab-accesslog.php:54
-msgid "Country code"
-msgstr "国コード"
+msgid "Code"
+msgstr "コード"
 
 #: admin/includes/tab-accesslog.php:55
 msgid "Result"
@@ -189,122 +188,126 @@ msgid "Only when passed"
 msgstr "通過時に記録"
 
 #: admin/includes/tab-settings.php:144
+msgid "Unauthenticated user"
+msgstr "未認証ユーザーを記録"
+
+#: admin/includes/tab-settings.php:145
 msgid "Authenticated user"
 msgstr "認証済ユーザーを記録"
 
-#: admin/includes/tab-settings.php:145
+#: admin/includes/tab-settings.php:146
 msgid "All of validation"
 msgstr "すべての検証を記録"
 
-#: admin/includes/tab-settings.php:152
+#: admin/includes/tab-settings.php:153
 msgid "<dfn title=\"ex) log, pwd, comment\">$_POST keys in logs</dfn>"
 msgstr "<dfn title=\"ex) log, pwd, comment\">ログに記録する$_POSTのキー</dfn>"
 
-#: admin/includes/tab-settings.php:162 admin/includes/tab-settings.php:180
-#: admin/includes/tab-settings.php:333 admin/includes/tab-settings.php:349
+#: admin/includes/tab-settings.php:163 admin/includes/tab-settings.php:181
+#: admin/includes/tab-settings.php:334 admin/includes/tab-settings.php:350
 msgid "(comma separated)"
 msgstr "（カンマ区切り）"
 
-#: admin/includes/tab-settings.php:170
+#: admin/includes/tab-settings.php:171
 msgid ""
 "<dfn title=\"ex) HTTP_X_FORWARDED_FOR\">$_SERVER keys for extra IPs</dfn>"
 msgstr ""
 "<dfn title=\"ex) HTTP_X_FORWARDED_FOR\">追加検証する$_SERVERのキー</dfn>"
 
-#: admin/includes/tab-settings.php:190
+#: admin/includes/tab-settings.php:191
 msgid "Maxmind GeoLite settings"
 msgstr "Maxmind GeoLite&thinsp;の設定"
 
-#: admin/includes/tab-settings.php:198
+#: admin/includes/tab-settings.php:199
 msgid "Path to database (IPv4)"
 msgstr "データベースへのパス（IPv4）"
 
-#: admin/includes/tab-settings.php:211 admin/includes/tab-settings.php:232
+#: admin/includes/tab-settings.php:212 admin/includes/tab-settings.php:233
 #: includes/download.php:126
 #, php-format
 msgid "Last update: %s"
 msgstr "最終更新：%s"
 
-#: admin/includes/tab-settings.php:219
+#: admin/includes/tab-settings.php:220
 msgid "Path to database (IPv6)"
 msgstr "データベースへのパス（IPv6）"
 
-#: admin/includes/tab-settings.php:241
+#: admin/includes/tab-settings.php:242
 msgid "Auto updating (once a month)"
 msgstr "自動更新（月1回）"
 
-#: admin/includes/tab-settings.php:256
+#: admin/includes/tab-settings.php:257
 msgid "Download database"
 msgstr "データベースのダウンロード"
 
-#: admin/includes/tab-settings.php:264
+#: admin/includes/tab-settings.php:265
 msgid "Download now"
 msgstr "今すぐダウンロード"
 
-#: admin/includes/tab-settings.php:275
+#: admin/includes/tab-settings.php:276
 msgid "Submission settings"
 msgstr "投稿時の設定"
 
-#: admin/includes/tab-settings.php:283
+#: admin/includes/tab-settings.php:284
 msgid "Text message on comment form"
 msgstr "投稿フォーム上のテキスト・メッセージ"
 
-#: admin/includes/tab-settings.php:294
+#: admin/includes/tab-settings.php:295
 msgid "None"
 msgstr "なし"
 
-#: admin/includes/tab-settings.php:295
+#: admin/includes/tab-settings.php:296
 msgid "Top"
 msgstr "上部"
 
-#: admin/includes/tab-settings.php:296
+#: admin/includes/tab-settings.php:297
 msgid "Bottom"
 msgstr "下部"
 
-#: admin/includes/tab-settings.php:305
+#: admin/includes/tab-settings.php:306
 msgid "Matching rule"
 msgstr "マッチング規則"
 
-#: admin/includes/tab-settings.php:315
+#: admin/includes/tab-settings.php:316
 msgid "White list"
 msgstr "ホワイトリスト"
 
-#: admin/includes/tab-settings.php:316
+#: admin/includes/tab-settings.php:317
 msgid "Black list"
 msgstr "ブラックリスト"
 
-#: admin/includes/tab-settings.php:324
+#: admin/includes/tab-settings.php:325
 #, php-format
-msgid "White list %s"
-msgstr "ホワイトリスト %s"
+msgid "<dfn title=\"If empth then pass through\">White list</dfn> %s"
+msgstr "<dfn title=\"空欄の場合は通過\">ホワイトリスト</dfn> %s"
 
-#: admin/includes/tab-settings.php:340
+#: admin/includes/tab-settings.php:341
 #, php-format
-msgid "Black list %s"
-msgstr "ブラックリスト %s"
+msgid "<dfn title=\"If empth then pass through\">Black list</dfn> %s"
+msgstr "<dfn title=\"空欄の場合は通過\">ブラックリスト</dfn> %s"
 
-#: admin/includes/tab-settings.php:356
+#: admin/includes/tab-settings.php:357
 #, php-format
 msgid "Response code %s"
 msgstr "レスポンスコード %s"
 
-#: admin/includes/tab-settings.php:388
+#: admin/includes/tab-settings.php:389
 msgid "Cache settings"
 msgstr "キャッシュの設定"
 
-#: admin/includes/tab-settings.php:396
+#: admin/includes/tab-settings.php:397
 msgid "Number of entries"
 msgstr "最大保持数"
 
-#: admin/includes/tab-settings.php:411
+#: admin/includes/tab-settings.php:412
 msgid "Expiration time [sec]"
 msgstr "有効時間 [sec]"
 
-#: admin/includes/tab-settings.php:429
+#: admin/includes/tab-settings.php:430
 msgid "Plugin settings"
 msgstr "プラグインの設定"
 
-#: admin/includes/tab-settings.php:437
+#: admin/includes/tab-settings.php:438
 msgid "Remove settings at uninstallation"
 msgstr "アンインストール時に設定を削除"
 
@@ -364,7 +367,7 @@ msgstr "キャッシュ中のIPアドレス"
 msgid "Clear statistics"
 msgstr "統計のクリア"
 
-#: classes/class-ip-geo-block.php:379
+#: classes/class-ip-geo-block.php:389
 msgid "Sorry, but you cannot be accepted."
 msgstr "申し訳ありませんが、受け付けられません。"
 

@@ -35,6 +35,9 @@ class IP_Geo_Block_Admin {
 	 * and adding a settings page and menu.
 	 */
 	private function __construct() {
+		// load plugin text domain
+		add_action( 'init', 'IP_Geo_Block::load_plugin_textdomain' );
+
 		// Set unique slug for admin page.
 		foreach ( IP_Geo_Block::$option_keys as $key => $val ) {
 			$this->option_slug[ $key ] = str_replace( '_', '-', $val );
@@ -54,7 +57,7 @@ class IP_Geo_Block_Admin {
 		add_filter( 'plugin_row_meta', array( $this, 'add_plugin_meta_links' ), 10, 2 );
 
 		// Check version and compatibility
-		if ( version_compare( get_bloginfo( 'version' ), '3.5' ) < 0 ) {
+		if ( version_compare( get_bloginfo( 'version' ), '3.7' ) < 0 ) {
 			add_action( 'admin_notices', array( $this, 'admin_notice' ) );
 		}
 
@@ -114,22 +117,23 @@ class IP_Geo_Block_Admin {
 			);
 
 			// js for google map
+			$footer = TRUE;
 			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-google-map',
 				'http://maps.google.com/maps/api/js?sensor=false',
-				array( 'jquery' ), IP_Geo_Block::VERSION
+				array( 'jquery' ), IP_Geo_Block::VERSION, $footer
 			);
 
 			// js for footable https://github.com/bradvin/FooTable
 			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-footable-js',
-				plugins_url( 'js/footable.all.min.js', __FILE__ ),
-				array( 'jquery' ), IP_Geo_Block::VERSION
+				plugins_url( 'js/footable.min.js', __FILE__ ),
+				array( 'jquery' ), IP_Geo_Block::VERSION, $footer
 			);
 
 			// js for option page
 			$handle = IP_Geo_Block::PLUGIN_SLUG . '-admin-script';
 			wp_enqueue_script( $handle,
 				plugins_url( 'js/admin.js', __FILE__ ),
-				array( 'jquery' ), IP_Geo_Block::VERSION
+				array( 'jquery' ), IP_Geo_Block::VERSION, $footer
 			);
 
 			// global value for ajax @since r16
@@ -167,7 +171,7 @@ class IP_Geo_Block_Admin {
 	public function add_plugin_meta_links( $links, $file ) {
 
 		if ( $file === IP_GEO_BLOCK_BASE ) {
-			$title = __( 'Contribute on GitHub', IP_Geo_Block::TEXT_DOMAIN );
+			$title = __( 'Contribute at GitHub', IP_Geo_Block::TEXT_DOMAIN );
 			array_push(
 				$links,
 				"<a href=\"https://github.com/tokkonopapa/WordPress-IP-Geo-Block\" title=\"$title\" target=_blank>$title</a>"
@@ -202,12 +206,16 @@ class IP_Geo_Block_Admin {
 		$tab = isset( $_GET['tab'] ) ? (int)$_GET['tab'] : 0;
 		$tab = min( 4, max( 0, $tab ) );
 		$option_slug = $this->option_slug[ 1 === $tab ? 'statistics': 'settings' ];
+		$settings = IP_Geo_Block::get_option( 'settings' );
 ?>
 <div class="wrap">
 	<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
 	<h2 class="nav-tab-wrapper">
 		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=0" class="nav-tab <?php echo $tab == 0 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Settings', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
 		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=1" class="nav-tab <?php echo $tab == 1 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Statistics', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+<?php if ( $settings['validation']['reclogs'] ) { ?>
+		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=4" class="nav-tab <?php echo $tab == 4 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Logs', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+<?php } ?>
 		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=2" class="nav-tab <?php echo $tab == 2 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Search', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
 		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=3" class="nav-tab <?php echo $tab == 3 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Attribution', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
 	</h2>
@@ -222,8 +230,8 @@ class IP_Geo_Block_Admin {
 <?php if ( 2 === $tab ) { ?>
 	<div id="ip-geo-block-map"></div>
 <?php } else if ( 3 === $tab ) { ?>
-	<p>This product includes GeoLite data created by MaxMind, available from <a class="ip-geo-block-link" href="http://www.maxmind.com" target=_blank>http://www.maxmind.com</a>.<br />
-	This product includes IP2Location open source libraries available from <a class="ip-geo-block-link" href="http://www.ip2location.com" target=_blank>http://www.ip2location.com</a>.</p>
+	<p>This product includes GeoLite data created by MaxMind, available from <a class="ip-geo-block-link" href="http://www.maxmind.com" rel=noreferrer target=_blank>http://www.maxmind.com</a>.<br />
+	This product includes IP2Location open source libraries available from <a class="ip-geo-block-link" href="http://www.ip2location.com" rel=noreferrer target=_blank>http://www.ip2location.com</a>.</p>
 <?php } ?>
 	<p><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php echo memory_get_usage(); ?> bytes.</p>
 </div>
@@ -260,6 +268,11 @@ class IP_Geo_Block_Admin {
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-attribution.php' );
 			ip_geo_block_tab_attribution( $this );
 			break;
+
+		  case 4:
+			// Access log
+			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-accesslog.php' );
+			ip_geo_block_tab_accesslog( $this );
 		}
 	}
 
@@ -279,7 +292,7 @@ class IP_Geo_Block_Admin {
 	 */
 	public function callback_field( $args ) {
 		if ( ! empty( $args['before'] ) )
-			echo $args['before'], "\n";
+			echo $args['before'], "\n"; // should be sanitized at caller
 
 		$id   = "${args['option']}_${args['field']}";
 		$name = "${args['option']}[${args['field']}]";
@@ -344,17 +357,17 @@ class IP_Geo_Block_Admin {
 			break;
 
 		  case 'button': ?>
-<input type="button" class="button-secondary" id="<?php echo $args['field']; ?>" value="<?php echo $args['value']; ?>" />
+<input type="button" class="button-secondary" id="<?php echo esc_attr( $args['field'] ); ?>" value="<?php echo esc_attr( $args['value'] ); ?>" />
 <?php
 			break;
 
 		  case 'html':
-			echo "\n", $args['value'], "\n";
+			echo "\n", $args['value'], "\n"; // should be sanitized at caller
 			break;
 		}
 
 		if ( ! empty( $args['after'] ) )
-			echo $args['after'], "\n";
+			echo $args['after'], "\n"; // should be sanitized at caller
 	}
 
 	/**
@@ -377,7 +390,7 @@ class IP_Geo_Block_Admin {
 		// extract key with 'only-' on its top
 		$only = array_keys( array_diff_key( $input, $output ) );
 		$only = array_shift( $only );
-		$only = strpos( $only, 'only-' ) === 0 ? substr( $only, 5 ) : FALSE;
+		$only = strpos( $only, 'only-' ) === 0 ? substr( $only, 5 ) : NULL;
 
 		/**
 		 * Sanitize a string from user input
@@ -461,7 +474,6 @@ class IP_Geo_Block_Admin {
 					// delete old key
 					if ( ! array_key_exists( $sub, $default[ $key ] ) ) {
 						unset( $output[ $key ][ $sub ] );
-						continue;
 					}
 
 					// for checkbox
@@ -530,10 +542,7 @@ class IP_Geo_Block_Admin {
 			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
 			// check format
-			$ip = $_POST['ip'];
-			if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ||
-			     filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
-
+			if ( filter_var( $ip = $_POST['ip'], FILTER_VALIDATE_IP ) ) {
 				// get location
 				$provider = $_POST['provider'];
 				$name = IP_Geo_Block_API::get_class_name( $provider );
@@ -575,7 +584,49 @@ class IP_Geo_Block_Admin {
 			);
 		}
 
-		if ( isset( $res ) )
+		// Validation logs
+		else if ( isset( $_POST['validation'] ) ) {
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+
+			$hook = array( NULL, 'comment', 'login', 'admin', 'xmlrpc' );
+			$which = isset( $_POST['which'] ) ? (int)$_POST['which'] : 0;
+			$which = (0 <= $which && $which <= 4) ? $hook[ $which ] : NULL;
+
+			switch ( $_POST['validation'] ) {
+			  case 'clear':
+				IP_Geo_Block_Logs::clean_log( $which );
+
+				$res = array(
+					'page' => "options-general.php?page=" . IP_Geo_Block::PLUGIN_SLUG,
+					'tab' => "tab=4"
+				);
+				break;
+
+			  case 'restore':
+				// if js is slow then limit the number of rows
+				$limit = IP_Geo_Block_Logs::limit_rows( @$_POST['time'] );
+
+				// compose html with sanitization
+				$which = IP_Geo_Block_Logs::restore_log( $which );
+				foreach ( $which as $hook => $rows ) {
+					$html = '';
+					$n = 0;
+					foreach ( $rows as $logs ) {
+						$log = (int)array_shift( $logs );
+						$html .= "<tr>\n<td data-value='" . $log . "'>";
+						$html .= ip_geo_block_localdate( $log, 'Y-m-d H:i:s' ) . "</td>\n";
+						foreach ( $logs as $log )
+							$html .= "<td>" . esc_html( $log ) . "</td>\n";
+						$html .= "</tr>\n";
+						if ( ++$n >= $limit ) break;
+					}
+					$res[ $hook ] = $html;
+				}
+				break;
+			}
+		}
+
+		if ( isset( $res ) ) // wp_send_json_{success,error}() @since 3.5.0
 			wp_send_json( $res ); // @since 3.5.0
 
 		// End of ajax
