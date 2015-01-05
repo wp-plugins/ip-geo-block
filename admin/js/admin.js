@@ -7,6 +7,8 @@
  */
 (function(c,f,g,a){var e="GmapRS",d="plugin_"+e,b={zoom:2,latitude:0,longitude:0},i=google.maps,h=function(j){this.o=c.extend({},b);this.q=[]};h.prototype={init:function(j){c.extend(this.o,j);this.c=new i.LatLng(this.o.latitude,this.o.longitude);this.m=new i.Map(this.e.get(0),{zoom:this.o.zoom,center:this.c,mapTypeId:i.MapTypeId.ROADMAP})},destroy:function(){this.deleteMarkers();this.e.data(d,null)},setCenter:function(){if(arguments.length>=2){var j=new i.LatLng((this.o.latitude=arguments[0]),(this.o.longitude=arguments[1]));delete this.c;this.c=j}this.m.setCenter(this.c);return this.e},setZoom:function(j){this.m.setZoom(j||this.o.zoom);return this.e},showMarker:function(l,k){var j=this.q[l];if(j&&j.w){false===k?j.w.close():j.w.open(this.m,j.m)}},addMarker:function(l){var m,j,k;m=new i.LatLng(l.latitude||this.o.latitude,l.longitude||this.o.longitude);j=new i.Marker({position:m,map:this.m,title:l.title||""});if(l.content){k=new i.InfoWindow({content:l.content});i.event.addListener(j,"click",function(){k.open(j.getMap(),j)})}this.q.push({p:m,w:k,m:j});this.m.setCenter(m);this.m.setZoom(l.zoom);if(l.show){this.showMarker(this.q.length-1)}return this.e},deleteMarkers:function(){var j,k;for(j in this.q){k=this.q[j];k.m.setMap(null)}this.q.length=0;return this.e}};c.fn[e]=function(k){var l,j;if(!(this.data(d) instanceof h)){this.data(d,new h(this))}j=this.data(d);j.e=this;if(typeof k==="undefined"||typeof k==="object"){if(typeof j.init==="function"){j.init(k)}}else{if(typeof k==="string"&&typeof j[k]==="function"){l=Array.prototype.slice.call(arguments,1);return j[k].apply(j,l)}else{c.error("Method "+k+" does not exist."+e)}}}}(jQuery,window,document));
 
+var start = new Date();
+
 (function ($) {
 
 	function sanitize(str) {
@@ -39,9 +41,9 @@
 		alert(status + ' ' + msg);
 	}
 
-	function redirect(url) {
-		if (-1 === url.indexOf('http')) {
-			window.location.href = url;
+	function redirect(page, tab) {
+		if (0 === page.indexOf('options')) {
+			window.location.href = sanitize(page) + '&' + sanitize(tab);
 		}
 	}
 
@@ -72,7 +74,7 @@
 			warning(textStatus, jqXHR.responseText);
 		})
 
-		.complete(function () {
+		.always(function () {
 			loding('download', false);
 		});
 	}
@@ -115,7 +117,7 @@
 			warning(textStatus, jqXHR.responseText);
 		})
 
-		.complete(function () {
+		.always(function () {
 			loding('loading', false);
 		});
 	}
@@ -131,14 +133,14 @@
 		})
 
 		.done(function (data, textStatus, jqXHR) {
-			redirect(sanitize(data.page) + '&' + sanitize(data.tab));
+			redirect(data.page, data.tab);
 		})
 
 		.fail(function (jqXHR, textStatus, errorThrown) {
 			warning(textStatus, jqXHR.responseText);
 		})
 
-		.complete(function () {
+		.always(function () {
 			loding('loading', false);
 		});
 	}
@@ -155,14 +157,14 @@
 		})
 
 		.done(function (data, textStatus, jqXHR) {
-			redirect(sanitize(data.page) + '&' + sanitize(data.tab));
+			redirect(data.page, data.tab);
 		})
 
 		.fail(function (jqXHR, textStatus, errorThrown) {
 			warning(textStatus, jqXHR.responseText);
 		})
 
-		.complete(function () {
+		.always(function () {
 			loding('loading', false);
 		});
 	}
@@ -175,14 +177,15 @@
 			action: IP_GEO_BLOCK.action,
 			nonce: IP_GEO_BLOCK.nonce,
 			validation: 'restore',
-			which: type
+			which: type,
+			time: new Date() - start
 		})
 
 		.done(function (data, textStatus, jqXHR) {
 			for (var key in data) {
 				key = sanitize(key); // already sanitized at the server
 //				html = $.parseHTML(data[key]); // @since 1.8
-//				$('#ip-geo-block-log-' + key).html('').append(html);
+//				$('#ip-geo-block-log-' + key).empty().append(html);
 				$('#ip-geo-block-log-' + key).html(data[key]);
 			}
 		})
@@ -191,9 +194,11 @@
 			warning(textStatus, jqXHR.responseText);
 		})
 
-		.complete(function () {
+		.always(function () {
 			if (typeof $.fn.footable === 'function') {
+//				console.time('timer');
 				$('.ip-geo-block-log').fadeIn('slow').footable();
+//				console.timeEnd('timer');
 			}
 			loding('loading', false);
 		});

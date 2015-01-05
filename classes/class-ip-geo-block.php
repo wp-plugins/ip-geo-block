@@ -20,7 +20,7 @@ class IP_Geo_Block {
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '1.3.1';
+	const VERSION = '1.4.0';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
 	const CACHE_KEY   = 'ip_geo_block_cache';
@@ -43,9 +43,6 @@ class IP_Geo_Block {
 	 * 
 	 */
 	private function __construct() {
-		// load plugin text domain
-		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
-
 		// check the package version and upgrade if needed
 		$settings = self::get_option( 'settings' );
 		if ( version_compare( $settings['version'], self::VERSION ) < 0 )
@@ -67,10 +64,9 @@ class IP_Geo_Block {
 			add_filter( 'preprocess_comment', array( $this, 'validate_trackback' ) );
 		}
 
-		// action hook from xmlrpc.php @since 3.1.0
-		if ( $settings['validation']['xmlrpc'] ) {
+		// xmlrpc.php @since 3.1.0
+		if ( $settings['validation']['xmlrpc'] )
 			add_filter( 'wp_xmlrpc_server_class', array( $this, 'validate_admin' ) );
-		}
 	}
 
 	// get default optional values
@@ -116,10 +112,13 @@ class IP_Geo_Block {
 	 *
 	 */
 	public static function activate( $network_wide = NULL ) {
-		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-opts.php' );
-
 		// upgrade options
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-opts.php' );
 		$settings = IP_Geo_Block_Options::upgrade();
+
+		// create log
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+		IP_Geo_Block_Logs::create_log();
 
 		// execute to download immediately
 		if ( $settings['update']['auto'] ) {
@@ -153,6 +152,10 @@ class IP_Geo_Block {
 
 			// delete IP address cache
 			delete_transient( self::CACHE_KEY ); // @since 2.8
+
+			// delete log
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+			IP_Geo_Block_Logs::delete_log();
 		}
 	}
 
@@ -160,7 +163,7 @@ class IP_Geo_Block {
 	 * Load the plugin text domain for translation.
 	 *
 	 */
-	public function load_plugin_textdomain() {
+	public static function load_plugin_textdomain() {
 		load_plugin_textdomain( self::TEXT_DOMAIN, FALSE, dirname( IP_GEO_BLOCK_BASE ) . '/languages/' );
 	}
 
@@ -180,9 +183,9 @@ class IP_Geo_Block {
 	 * Get geolocation and country code from an ip address
 	 *
 	 */
-	public static function get_geolocation( $ip, $list = array() ) {
+	public static function get_geolocation( $ip, $list = array(), $callback = 'get_location' ) {
 		$settings = self::get_option( 'settings' );
-		return self::_get_geolocation( $ip, $settings, $list, 'get_location' );
+		return self::_get_geolocation( $ip, $settings, $list, $callback );
 	}
 
 	private static function _get_geolocation( $ip, $settings, $list = array(), $callback = 'get_country' ) {
@@ -220,13 +223,21 @@ class IP_Geo_Block {
 					);
 
 					return is_array( $code ) ?
-						$ret + $code : 
-						$ret + array( 'code' => strtoupper( $code ) );
+						$ret + $code :
+						$ret + array( 'code' => $code );
 				}
 			}
 		}
 
-		return array( 'ip' => $ip, 'code' => 'ZZ', 'errorMessage' => 'unknown' );
+		return array(
+			'ip' => $ip,
+			'auth' => get_current_user_id(),
+			'time' => 0,
+			'provider'     => 'ZZ',
+			'code'         => 'ZZ', // for get_country()
+			'countryCode'  => 'ZZ', // for get_location()
+			'errorMessage' => 'unknown',
+		);
 	}
 
 	/**
@@ -234,17 +245,15 @@ class IP_Geo_Block {
 	 *
 	 */
 	private function validate_country( $validate, $settings ) {
-		// matching rule
+		// matching rule and list of country code
 		$rule  = $settings['matching_rule'];
-		$white = $settings['white_list'];
-		$black = $settings['black_list'];
-
-		if ( empty( $white ) && empty( $black ) )
-			return $validate + array( 'result' => 'passed' );
+		$white = $settings['white_list']; // 0 == $rule
+		$black = $settings['black_list']; // 1 == $rule
 
 		if ( 'ZZ' !== $validate['code'] ) {
-			if ( 0 == $rule && FALSE !== strpos( $white, $validate['code'] ) ||
-			     1 == $rule && FALSE === strpos( $black, $validate['code'] ) )
+			// if the list of country code is empty then pass through
+			if ( 0 == $rule && ( ! $white || FALSE !== strpos( $white, $validate['code'] ) ) ||
+			     1 == $rule && ( ! $black || FALSE === strpos( $black, $validate['code'] ) ) )
 				return $validate + array( 'result' => 'passed' ); // It may not be a spam
 			else
 				return $validate + array( 'result' => 'blocked'); // It could be a spam
@@ -293,13 +302,14 @@ class IP_Geo_Block {
 			header( 'Location: http://blackhole.webpagetest.org/', TRUE, $code );
 			die();
 
-		  case 4: // 4xx Client Error
-			wp_die( $msg, 'Error', array( 'response' => $code, 'back_link' => TRUE ) );
+		  case 4: // 4xx Client Error ('text/html' is only for comment and login)
+			if ( ! defined( 'DOING_AJAX' ) && ! defined( 'XMLRPC_REQUEST' ) ) {
+				wp_die( $msg, 'Error', array( 'response' => $code, 'back_link' => TRUE ) );
+			}
 
 		  default: // 5xx Server Error
 			status_header( $code ); // @since 2.0.0
 			die();
-			break;
 		}
 	}
 
@@ -312,14 +322,17 @@ class IP_Geo_Block {
 	private function validate_ip( $hook, $settings ) {
 		// set IP address to be validated
 		$ips = array(
-			apply_filters( self::PLUGIN_SLUG . '-ip-addr', $_SERVER['REMOTE_ADDR'] )
+			(string) apply_filters(
+				self::PLUGIN_SLUG . '-ip-addr', $_SERVER['REMOTE_ADDR']
+			)
 		);
 
 		// pick up all the IPs in HTTP_X_FORWARDED_FOR, HTTP_CLIENT_IP and etc.
 		foreach ( explode( ',', $settings['validation']['proxy'] ) as $var ) {
 			if ( isset( $_SERVER[ $var ] ) ) {
 				foreach ( explode( ',', $_SERVER[ $var ] ) as $ip ) {
-					if ( filter_var( $ip = trim( $ip ), FILTER_VALIDATE_IP ) ) {
+					if ( ! in_array( $ip = trim( $ip ), $ips ) &&
+					     filter_var( $ip, FILTER_VALIDATE_IP ) ) {
 						$ips[] = $ip;
 					}
 				}
@@ -336,7 +349,7 @@ class IP_Geo_Block {
 		//     'result'   => $result,   /* 'passed', 'blocked' or 'unknown'    */
 		// );
 		$var = self::PLUGIN_SLUG . "-$hook";
-		foreach ( array_unique( $ips ) as $ip ) {
+		foreach ( $ips as $ip ) {
 			$validate = self::_get_geolocation( $ip, $settings );
 			$validate = apply_filters( $var, $validate, $settings );
 
@@ -353,12 +366,24 @@ class IP_Geo_Block {
 		// update cache
 		IP_Geo_Block_API_Cache::update_cache( $hook, $validate, $settings );
 
+		// record log (0:no, 1:blocked, 2:passed, 3:unauth, 4:auth, 5:all)
+		$var = (int)$settings['validation']['reclogs'];
+		if ( ( 1 === $var &&   $blocked ) || // blocked, unknown
+		     ( 2 === $var && ! $blocked ) || // passed
+		     ( 3 === $var && ! $validate['auth'] ) || // unauthenticated
+		     ( 4 === $var &&   $validate['auth'] ) || // authenticated
+		     ( 5 === $var ) ) { // all
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+			IP_Geo_Block_Logs::record_log( $hook, $validate, $settings );
+		}
+
 		if ( $blocked ) {
 			// update statistics
 			if ( $settings['save_statistics'] )
 				$this->update_statistics( $validate );
 
 			// send response code to refuse
+			self::load_plugin_textdomain();
 			$this->send_response(
 				$settings['response_code'],
 				__( 'Sorry, but you cannot be accepted.', self::TEXT_DOMAIN )
