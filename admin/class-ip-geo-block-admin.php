@@ -288,11 +288,11 @@ class IP_Geo_Block_Admin {
 	/**
 	 * Function that fills the field with the desired inputs as part of the larger form.
 	 * The 'id' and 'name' should match the $id given in the add_settings_field().
-	 * @param array $args A value to be given into the field.
+	 * @param array $args['value'] must be sanitized because it comes from external.
 	 */
 	public function callback_field( $args ) {
 		if ( ! empty( $args['before'] ) )
-			echo $args['before'], "\n"; // should be sanitized at caller
+			echo $args['before'], "\n"; // must be sanitized at caller
 
 		$id   = "${args['option']}_${args['field']}";
 		$name = "${args['option']}[${args['field']}]";
@@ -362,12 +362,12 @@ class IP_Geo_Block_Admin {
 			break;
 
 		  case 'html':
-			echo "\n", $args['value'], "\n"; // should be sanitized at caller
+			echo "\n", $args['value'], "\n"; // must be sanitized at caller
 			break;
 		}
 
 		if ( ! empty( $args['after'] ) )
-			echo $args['after'], "\n"; // should be sanitized at caller
+			echo $args['after'], "\n"; // must be sanitized at caller
 	}
 
 	/**
@@ -613,11 +613,13 @@ class IP_Geo_Block_Admin {
 					$n = 0;
 					foreach ( $rows as $logs ) {
 						$log = (int)array_shift( $logs );
-						$html .= "<tr>\n<td data-value='" . $log . "'>";
-						$html .= ip_geo_block_localdate( $log, 'Y-m-d H:i:s' ) . "</td>\n";
-						foreach ( $logs as $log )
-							$html .= "<td>" . esc_html( $log ) . "</td>\n";
-						$html .= "</tr>\n";
+						$html .= "<tr><td data-value='" . $log . "'>";
+						$html .= ip_geo_block_localdate( $log, 'Y-m-d H:i:s' ) . "</td>";
+						foreach ( $logs as $log ) {
+							$log = esc_html( $log );
+							$html .= "<td>$log</td>";
+						}
+						$html .= "</tr>";
 						if ( ++$n >= $limit ) break;
 					}
 					$res[ $hook ] = $html;

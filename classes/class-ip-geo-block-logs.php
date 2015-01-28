@@ -8,7 +8,7 @@
  * @link      http://tokkono.cute.coocan.jp/blog/slow/
  * @copyright 2013, 2014 tokkonopapa
  */
-define( 'IP_GEO_BLOCK_MAX_POST_LEN', 256 );
+define( 'IP_GEO_BLOCK_MAX_POST_LEN', 255 );
 
 class IP_Geo_Block_Logs {
 
@@ -23,7 +23,7 @@ class IP_Geo_Block_Logs {
 		$table = $wpdb->prefix . self::TABLE_NAME;
 
 		// creating mixed db engine will cause some troubles.
-		// some of the system can not exceed over 255 for varchar.
+		// some systems can not exceed over 255 for varchar.
 		$wpdb->query( "CREATE TABLE IF NOT EXISTS `$table` (
  `No` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
  `time` int(10) unsigned NOT NULL DEFAULT 0,
@@ -61,7 +61,7 @@ class IP_Geo_Block_Logs {
 	}
 
 	/**
-	 * Limit the number of rows to be shown
+	 * Limit the number of rows to send to the user agent
 	 *
 	 */
 	public static function limit_rows( $time ) {
@@ -122,10 +122,11 @@ class IP_Geo_Block_Logs {
 	 * @link https://core.trac.wordpress.org/browser/trunk/src/wp-includes/formatting.php
 	 * @link https://core.trac.wordpress.org/browser/trunk/src/wp-includes/functions.php
 	 */
-	private static function truncate_utf8( $str, $regexp, $replace = '', $len = IP_GEO_BLOCK_MAX_POST_LEN ) {
-		// remove unnecessary characters ('/[^\t\n\f\r]/')
-		$str = @preg_replace( '/[\x00-\x08\x0b\x0e-\x1f\x7f]/', '', $str );
-		$str = @preg_replace( $regexp, $replace, $str );
+	private static function truncate_utf8( $str, $regexp = NULL, $replace = '', $len = IP_GEO_BLOCK_MAX_POST_LEN ) {
+		// remove unnecessary characters
+		$str = @preg_replace( '/[\x00-\x1f\x7f]/', '', $str );
+		if ( $regexp )
+			$str = @preg_replace( $regexp, $replace, $str );
 
 		// limit the length of the string
 		if ( function_exists( 'mb_strcut' ) ) {
@@ -182,11 +183,11 @@ class IP_Geo_Block_Logs {
 	/**
 	 * Get data
 	 *
-	 * These data should be sanitized before rendering
+	 * These data must be sanitized before rendering
 	 */
 	private static function get_user_agent() {
 		return isset( $_SERVER['HTTP_USER_AGENT'] ) ?
-			self::truncate_utf8( $_SERVER['HTTP_USER_AGENT'], '/[\t\n\f\r]/' ) : '';
+			self::truncate_utf8( $_SERVER['HTTP_USER_AGENT'] ) : '';
 	}
 
 	private static function get_http_headers() {
@@ -204,7 +205,6 @@ class IP_Geo_Block_Logs {
 		);
 
 		$headers = array();
-
 		foreach ( array_keys( $_SERVER ) as $key ) {
 			if ( 'HTTP_' === substr( $key, 0, 5 ) && 
 			     empty( $exclusions[ $key ] ) ) {
@@ -212,7 +212,7 @@ class IP_Geo_Block_Logs {
 			}
 		}
 
-		return self::truncate_utf8( implode( ',', $headers ), '/[\t\n\f\r]/' );
+		return self::truncate_utf8( implode( ',', $headers ) );
 	}
 
 	private static function get_post_data( $hook, $validate, $settings ) {
@@ -222,7 +222,7 @@ class IP_Geo_Block_Logs {
 		// XML-RPC
 		if ( 'xmlrpc' === $hook ) {
 			global $HTTP_RAW_POST_DATA;
-			$posts = self::truncate_utf8( $HTTP_RAW_POST_DATA, '/\s+</', '<' );
+			$posts = self::truncate_utf8( $HTTP_RAW_POST_DATA, '/\s*([<>])\s*/', '$1' );
 
 			// mask the password
 			if ( $mask_pwd &&
@@ -278,7 +278,7 @@ class IP_Geo_Block_Logs {
 			return;
 
 		$path = trailingslashit( $path ) .
-			IP_Geo_Block::PLUGIN_SLUG . date('-ymw') . '.log';
+			IP_Geo_Block::PLUGIN_SLUG . date('-Y-m') . '.log';
 		if ( ( $fp = @fopen( $path, 'ab' ) ) === FALSE )
 			return;
 
@@ -317,7 +317,7 @@ class IP_Geo_Block_Logs {
 		$agent = self::get_user_agent();
 		$heads = self::get_http_headers();
 		$posts = self::get_post_data( $hook, $validate, $settings );
-		$method = $_SERVER['REQUEST_METHOD'] . '[' . $_SERVER['SERVER_PORT'] . ']:' . basename( $_SERVER['REQUEST_URI'] );
+		$method = $_SERVER['REQUEST_METHOD'] . '[' . $_SERVER['SERVER_PORT'] . ']:' . $_SERVER['REQUEST_URI'];
 
 		// limit the maximum number of rows
 		global $wpdb;
@@ -391,7 +391,7 @@ class IP_Geo_Block_Logs {
 
 		foreach ( $list as $row ) {
 			$hook = array_shift( $row );
-			$result[ $hook ][] = $row;
+			$result[ $hook ][] = $row; // must be sanitized just before sending to UA.
 		}
 
 		return isset( $result ) ? $result : array();
