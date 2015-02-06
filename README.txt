@@ -4,17 +4,16 @@ Donate link:
 Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc, login, wp-admin, ajax, security, brute force
 Requires at least: 3.7
 Tested up to: 4.1
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress plugin that will blocks any comment, pingback and trackback spams 
-posted from outside your nation. And it will also protect against malicious 
-access to the login form, admin area and XML-RPC from undesired countries.
+A WordPress plugin that will block any spams, login attempts and malicious 
+access posted from outside your nation.
 
 == Description ==
 
-This plugin will examine a country code based on the IP address.If a comment, 
+This plugin will examine a country code based on the IP address. If a comment, 
 pingback or trackback comes from specific country, it will be blocked before 
 Akismet validate it.
 
@@ -23,8 +22,8 @@ and reverse-brute-force attacks to the login form, admin area and XML-RPC.
 
 = Features =
 
-1. Access to the basic and important entrances such as `wp-comments-post.php`, 
-`xmlrpc.php`, `wp-login.php`, `wp-admin/admin.php`, `wp-admin/admin-ajax.php` 
+1. Access to the basic and important entrances such as `wp-comments-post.php`,
+ `xmlrpc.php`, `wp-login.php`, `wp-admin/admin.php`, `wp-admin/admin-ajax.php` 
 will be validated by means of a country code based on IP address. 
 
 2. Free IP Geolocation database and REST APIs are installed into this plugin 
@@ -57,8 +56,8 @@ one of the IP2Location plugins (
     [IP2Location Country Blocker](http://wordpress.org/plugins/ip2location-country-blocker/ "WordPress - IP2Location Country Blocker - WordPress Plugins")
 ), this plugin uses its local database prior to the REST APIs.
 
-8. This plugin is simple enough to be able to cooperate with other full spec 
-security plugin such as 
+8. This plugin is simple and lite enough to be able to cooperate with other 
+full spec security plugin such as 
     [Wordfence Security](https://wordpress.org/plugins/wordfence/ "WordPress › Wordfence Security « WordPress Plugins")
 (because the function of country bloking is available only for premium users).
 
@@ -95,18 +94,57 @@ All contributions will always be welcome.
 3. Click 'Install Now'
 4. Activate the plugin on the Plugin dashboard
 
-= Settings =
+= Geolocation API settings =
 
-* **Service provider and API key**  
+* **API selection and key settings**  
     If you wish to use `IPInfoDB`, you should register from 
     [their site](http://ipinfodb.com/ "IPInfoDB | Free IP Address Geolocation Tools") 
     to get a free API key and set it into the textfield.
     And `ip-api.com` and `Smart-IP.net` require non-commercial use.
 
-* **Validation settings**  
-    `XML-RPC` is for validation of pingback spam. Additional IP addresses will 
-    be validated if some of keys for `$_SERVER` variable are specified in 
-    `$_SERVER keys for extra IPs`.
+= Validation settings =
+
+* **Comment post**  
+    Validate post to `wp-comment-post.php`. Comment post and trackback will be 
+    validated.
+
+* **XML-RPC**  
+    Validate access to `xmlrpc.php`. Pingback and other remote command with 
+    username and password will be validated.
+
+* **Login form**  
+    Validate access to `wp-login.php`.
+
+* **Admin area**  
+    Validate access to `wp-admin/admin.php` except `wp-admin/admin-ajax.php` 
+    and `wp-admin/admin-post.php`.
+
+* ** Admin Ajax**  
+    Validate access to `wp-admin/admin-ajax.php`.
+
+* **Record validation statistics**  
+    If `Enable`, you can see `Statistics of validation` on Statistics tab.
+
+* **Record validation logs**  
+    If you select anything but `Disable`, you can see `Validation logs` on 
+    Logs tab.
+
+* **$_POST keys in logs**  
+    Normally, you can see just keys at `$_POST data:` on Logs tab. If you put 
+    some of interested keys into this textfield, you can see the value of key 
+    like `key=value`.
+
+* **$_SERVER keys for extra IPs**  
+    Additional IP addresses will be validated if some of keys in `$_SERVER` 
+    variable are specified in this textfield. Typically `HTTP_X_FORWARDED_FOR`.
+
+= Maxmind GeoLite settings =
+
+* **Auto updating (once a month)**
+    If `Enable`, Maxmind GeoLite database will be downloaded automatically 
+    by WordPress cron job.
+
+= Submission settings =
 
 * **Text position on comment form**  
     If you want to put some text message on your comment form, please select
@@ -131,6 +169,16 @@ All contributions will always be welcome.
     the 4xx code will lead to WordPress error page, and the 5xx will pretend 
     an server error.
 
+= Cache settings =
+
+* **Number of entries**  
+    Maximum number of IPs to be cached.
+
+* **Expiration time [sec]**  
+    Maximum time in sec to keep cache.
+
+= Plugin settings =
+
 * **Remove settings at uninstallation**  
     If you checked this option, all settings will be removed when this plugin
     is uninstalled for clean uninstalling.
@@ -149,9 +197,9 @@ Check `statistics` tab on this plugin's option page.
 
 = How can I test on the local site? =
 
-There are two ways. One is to add some code somewhere in your php (typically 
-`functions.php` in your theme) to substitute local IP address through filter 
-fook `ip-geo-block-ip-addr` as follows:
+There are two ways. One is to add some code like below somewhere in your php 
+(typically `functions.php` in your theme) to substitute local IP address via 
+filter fook `ip-geo-block-ip-addr` as follows:
 
 `function my_replace_ip( $ip ) {
     return '98.139.183.24'; // yahoo.com
@@ -160,8 +208,8 @@ add_filter( 'ip-geo-block-ip-addr', 'my_replace_ip' );`
 
 Another method is adding a country code into `White list` or `Black list` on 
 the plugin settings page. Most of the IP Geolocation services return empty 
-(with some status) if a local IP address (e.g. 127.0.0.0) is sent, but only 
-`freegeoip.net` returns `RD`.
+(with some status) if a local IP address (e.g. 127.0.0.0) is requested, but 
+only `freegeoip.net` returns `RD`.
 
 = Can I add an additional validation function into this plugin? =
 
@@ -201,10 +249,10 @@ Yes, here is the list of all hooks.
 
 * `ip-geo-block-ip-addr`          : IP address of accessor.
 * `ip-geo-block-headers`          : compose http request headers.
-* `ip-geo-block-comment`          : validate IP adress at `wp-comments-post.php`.
-* `ip-geo-block-login`            : validate IP adress at `wp-login.php`.
-* `ip-geo-block-admin`            : validate IP adress at `wp-admin/` area.
-* `ip-geo-block-xmlrpc`           : validate IP adress at `xmlrpc.php`.
+* `ip-geo-block-comment`          : validate IP address at `wp-comments-post.php`.
+* `ip-geo-block-xmlrpc`           : validate IP address at `xmlrpc.php`.
+* `ip-geo-block-login`            : validate IP address at `wp-login.php`.
+* `ip-geo-block-admin`            : validate IP address at `wp-admin/admin.php`.
 * `ip-geo-block-backup-dir`       : absolute path where log files should be saved.
 * `ip-geo-block-maxmind-dir`      : absolute path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
@@ -234,6 +282,13 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 5. **IP Geo Plugin** - Attribution.
 
 == Changelog ==
+
+= 2.0.1 =
+* Fixed the issue of improper scheme from the HTTPS site when loading js 
+  for google map.
+* In order to prevent accidental disclosure of the length of password, 
+  changed the length of `*` (masked password) which is logged into the 
+  database.
 
 = 2.0.0 =
 * **New feature:** Protection against brute-force and reverse-brute-force 
