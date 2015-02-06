@@ -160,10 +160,13 @@ add_filter( 'ip-geo-block-xmlrpc', 'my_whitelist' );
 
 
 /**
- * Example 9: validate admin-ajax.php regardless of country code
- * Use case: protect malicious access via admin-ajax.php
+ * Example 9: validate requested queries via admin-ajax.php
+ * Use case: block malicious access such as `File Inclusion`
  *
- * @global array $_GET and $_POST requested values
+ * @link http://hakipedia.com/index.php/File_Inclusion
+ * @link http://blog.sucuri.net/2014/09/slider-revolution-plugin-critical-vulnerability-being-exploited.html
+ *
+ * @global array $_GET and $_POST requested queries
  * @param  array $validate
  * @return array $validate add 'result' as 'blocked' when NG word was found
  */
@@ -175,8 +178,7 @@ function my_protectives( $validate ) {
 			'passwd',
 		);
 
-		$req = array_values( $_GET ) + array_values( $_POST );
-		$req = strtolower( urldecode( implode( ' ', $req ) ) );
+		$req = strtolower( urldecode( serialize( $_GET + $_POST ) ) );
 
 		foreach ( $protectives as $item ) {
 			if ( strpos( $req, $item ) !== FALSE ) {

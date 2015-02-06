@@ -91,7 +91,7 @@ function ip_geo_block_tab_settings( $context ) {
 		'xmlrpc'  => __( '<dfn title="Validate access to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 		'login'   => __( '<dfn title="Validate access to wp-login.php">Login form</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 		'admin'   => __( '<dfn title="Validate access to wp-admin/admin.php">Admin area</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'ajax'    => __( '<dfn title="Validate access to wp-admin/admin-ajax.php (logged in “Admin area”)">Admin Ajax</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'ajax'    => __( '<dfn title="Validate access to wp-admin/admin-ajax.php">Admin Ajax</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 	);
 
 	$field = 'validation';
@@ -153,7 +153,7 @@ function ip_geo_block_tab_settings( $context ) {
 
 	add_settings_field(
 		$option_name . "_${field}_postkey",
-		__( '<dfn title="ex) log, pwd, comment">$_POST keys in logs</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		__( '<dfn title="ex) log, pwd, comment">$_POST keys to be recorded with their values in logs</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 		array( $context, 'callback_field' ),
 		$option_slug,
 		$section,
