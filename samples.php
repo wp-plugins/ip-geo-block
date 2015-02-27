@@ -7,7 +7,7 @@
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
  * @link      http://tokkono.cute.coocan.jp/blog/slow/
- * @copyright 2014 tokkonopapa
+ * @copyright 2014-2015 tokkonopapa
  */
 
 if ( class_exists( 'IP_Geo_Block' ) ):
@@ -171,10 +171,9 @@ add_filter( 'ip-geo-block-xmlrpc', 'my_whitelist' );
  * @return array $validate add 'result' as 'blocked' when NG word was found
  */
 function my_protectives( $validate ) {
-	if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+	if ( ! $validate['auth'] ) {
 		$protectives = array(
 			'wp-config.php',
-			'.htaccess',
 			'passwd',
 		);
 
@@ -194,7 +193,34 @@ add_filter( 'ip-geo-block-admin', 'my_protectives' );
 
 
 /**
- * Example 10: validate ip address before authrization in admin area
+ * Example 10: validate requested queries via admin-ajax.php
+ * Use case: Give ajax permission in case of safe actions on front facing page
+ *
+ * @global array $_GET and $_POST requested queries
+ * @param  array $validate
+ * @return array $validate add 'result' as 'passed' when 'action' is OK
+ */
+function my_permission( $validate ) {
+	if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) {
+		$permitted = array(
+			'something',
+		);
+
+		foreach ( $permitted as $item ) {
+			if ( $item === $_REQUEST['action'] ) {
+				$validate['result'] = 'passed';
+				break;
+			}
+		}
+	}
+
+	return $validate; // should not set 'passed' to validate by country code
+}
+add_filter( 'ip-geo-block-admin', 'my_permission' );
+
+
+/**
+ * Example 11: validate ip address before authrization in admin area
  * Use case: When an emergency situation of your self being locked out
  *
  */
@@ -208,7 +234,7 @@ add_filter( 'ip-geo-block-admin', 'my_emergency' );
 
 
 /**
- * Example 11: backup validation logs to text files
+ * Example 12: backup validation logs to text files
  * Use case: keep verification logs selectively to text files
  *
  * @param  string $hook 'comment', 'login', 'admin' or 'xmlrpc'
@@ -225,7 +251,7 @@ add_filter( 'ip-geo-block-backup-dir', 'my_backup_dir', 10, 2 );
 
 
 /**
- * Example 12: usage of 'IP_Geo_Block::get_geolocation()'
+ * Example 13: usage of 'IP_Geo_Block::get_geolocation()'
  * Use case: get geolocation of ip address with latitude and longitude
  *
  * @param  string $ip ip address

@@ -3,35 +3,59 @@ Contributors: tokkonopapa
 Donate link:
 Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc, login, wp-admin, ajax, security, brute force
 Requires at least: 3.7
-Tested up to: 4.1
-Stable tag: 2.0.1
+Tested up to: 4.1.1
+Stable tag: 2.0.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 A WordPress plugin that will block any spams, login attempts and malicious 
-access posted from outside your nation.
+access to the admin area posted from outside your nation.
 
 == Description ==
+
+There are some cases that your site is infected. The first one is the case 
+that contaminated files are uploaded via FTP or some kind of uploaders. 
+In this case, scaning and verifing integrity of files on your site is useful 
+to detect the infection.
+
+The second one is the cracking of the login password. In this case, the rule 
+of right is to strengthen the password.
+
+The third one is caused by malicious access to the core files. The major issue 
+in this case is that a plugin or theme in your site has vulnerability such as 
+XSS, CSRF, SQLi, LFI and so on. If a plugin has vulnerability of Local File 
+Inclusion (LFI), the attackers can easily download the `wp-config.php` without 
+knowing the username and the password by simply hitting 
+    [http://example.com/wp-admin/admin-ajax.php?action=something_vulnerable&file=../wp-config.php](http://blog.sucuri.net/2014/09/slider-revolution-plugin-critical-vulnerability-being-exploited.html "Slider Revolution Plugin Critical Vulnerability Being Exploited | Sucuri Blog")
+on their browser.
+
+For these cases, the protection based on the IP address is not a perfect 
+solution for everyone. But for some site owners or some certain cases such 
+as 'zero-day-attack', it can still reduce the risk of infection against the 
+specific attacks.
+
+This is the reason why this plugin is here.
+
+= Features =
 
 This plugin will examine a country code based on the IP address. If a comment, 
 pingback or trackback comes from specific country, it will be blocked before 
 Akismet validate it.
 
 With the same mechanism, it will fight against burst access of brute-force 
-and reverse-brute-force attacks to the login form, admin area and XML-RPC.
-
-= Features =
+and reverse-brute-force attacks to the login form, XML-RPC and admin area.
 
 1. Access to the basic and important entrances such as `wp-comments-post.php`,
- `xmlrpc.php`, `wp-login.php`, `wp-admin/admin.php`, `wp-admin/admin-ajax.php` 
-will be validated by means of a country code based on IP address. 
+ `xmlrpc.php`, `wp-login.php`, `wp-admin/admin.php`, `wp-admin/admin-ajax.php`,
+ `wp-admin/admin-post.php` will be validated by means of a country code based 
+on IP address.
 
 2. Free IP Geolocation database and REST APIs are installed into this plugin 
 to get a country code from an IP address. There are two types of API which 
 support only IPv4 or both IPv4 and IPv6. This plugin will automatically select 
 an appropriate API.
 
-3. In order to prevent the authentication through the login form and XML-RPC 
+3. In order to prevent the invasion through the login form and XML-RPC 
 against the brute-force and the reverse-brute-force attacks, the number of 
 login attempts will be limited per IP address.
 
@@ -42,8 +66,8 @@ period of time.
 5. Validation logs will be recorded into MySQL data table to analyze posting 
 pattern under the specified condition.
 
-6. Custom validation function can be added by `add_filter()` with predefined 
-filter hook. See
+6. Custom validation function can be added via `add_filter()` with pre-defined 
+filter hook. See various use cases in 
     [sample.php](https://github.com/tokkonopapa/WordPress-IP-Geo-Block/blob/master/ip-geo-block/samples.php "WordPress-IP-Geo-Block/samples.php at master - tokkonopapa/WordPress-IP-Geo-Block - GitHub")
 bundled within this package.
 
@@ -68,7 +92,7 @@ This package includes GeoLite data created by MaxMind, available from
 and also includes IP2Location open source libraries available from 
     [IP2Location](http://www.ip2location.com "IP Address Geolocation to Identify Website Visitor's Geographical Location").
 
-And also thanks for providing these great services and REST APIs for free.
+Also thanks for providing the following great services and REST APIs for free.
 
 * [http://freegeoip.net/](http://freegeoip.net/ "freegeoip.net: FREE IP Geolocation Web Service") (IPv4 / free)
 * [http://ipinfo.io/](http://ipinfo.io/ "ipinfo.io - ip address information including geolocation, hostname and network details") (IPv4, IPv6 / free)
@@ -116,8 +140,7 @@ All contributions will always be welcome.
     Validate access to `wp-login.php`.
 
 * **Admin area**  
-    Validate access to `wp-admin/admin.php` except `wp-admin/admin-ajax.php` 
-    and `wp-admin/admin-post.php`.
+    Validate access to `wp-admin/*.php` except `wp-admin/admin-ajax.php`.
 
 * ** Admin Ajax**  
     Validate access to `wp-admin/admin-ajax.php`.
@@ -185,63 +208,39 @@ All contributions will always be welcome.
 
 == Frequently Asked Questions ==
 
-= What is this plugin for? =
+= I was locked down. What shall I do? =
 
-It's for blocking spam comments. If you can not specify countries with white 
-list or black list to protect your site against undesired access, you should 
-choose other awesome plugins.
+Add the following codes to `functions.php` in your theme and upload it via FTP.
 
-= How can I check this plugin works? =
-
-Check `statistics` tab on this plugin's option page.
-
-= How can I test on the local site? =
-
-There are two ways. One is to add some code like below somewhere in your php 
-(typically `functions.php` in your theme) to substitute local IP address via 
-filter fook `ip-geo-block-ip-addr` as follows:
-
-`function my_replace_ip( $ip ) {
-    return '98.139.183.24'; // yahoo.com
+`function my_emergency( $validate ) {
+    $validate['result'] = 'passed';
+    return $validate;
 }
-add_filter( 'ip-geo-block-ip-addr', 'my_replace_ip' );`
+add_filter( 'ip-geo-block-login', 'my_emergency' );
+add_filter( 'ip-geo-block-admin', 'my_emergency' );`
 
-Another method is adding a country code into `White list` or `Black list` on 
-the plugin settings page. Most of the IP Geolocation services return empty 
-(with some status) if a local IP address (e.g. 127.0.0.0) is requested, but 
-only `freegeoip.net` returns `RD`.
+= How can I protect my `wp-config.php` against malicious access? =
 
-= Can I add an additional validation function into this plugin? =
+`function my_protectives( $validate ) {
+    if ( ! $validate['auth'] ) {
+        $protectives = array(
+            'wp-config.php',
+            'passwd',
+        );
 
-Yes, you can use `add_filter()` with filter hook `ip-geo-block-comment` in 
-somewhere (typically `functions.php` in your theme) as follows:
+        $req = strtolower( urldecode( serialize( $_GET + $_POST ) ) );
 
-`function my_blacklist( $validate ) {
-    $blacklist = array(
-        '123.456.789.',
-    );
-
-    foreach ( $blacklist as $ip ) {
-        if ( strpos( $ip, $validate['ip'] ) === 0 ) {
-            $validate['result'] = 'blocked';
-            break;
+        foreach ( $protectives as $item ) {
+            if ( strpos( $req, $item ) !== FALSE ) {
+                $validate['result'] = 'blocked';
+                break;
+            }
         }
     }
 
     return $validate;
 }
-add_filter( 'ip-geo-block-comment', 'my_blacklist' );`
-
-= Can I change user agent strings when fetching services? =
-
-Yes. The default is something like `Wordpress/4.0; ip-geo-block 1.2.0`.
-You can change it as follows:
-
-`function my_user_agent( $args ) {
-    $args['user-agent'] = 'my user agent strings';
-    return $args;
-}
-add_filter( 'ip-geo-block-headers', 'my_user_agent' );`
+add_filter( 'ip-geo-block-admin', 'my_protectives' );`
 
 = Are there any other filter hooks? =
 
@@ -252,7 +251,7 @@ Yes, here is the list of all hooks.
 * `ip-geo-block-comment`          : validate IP address at `wp-comments-post.php`.
 * `ip-geo-block-xmlrpc`           : validate IP address at `xmlrpc.php`.
 * `ip-geo-block-login`            : validate IP address at `wp-login.php`.
-* `ip-geo-block-admin`            : validate IP address at `wp-admin/admin.php`.
+* `ip-geo-block-admin`            : validate IP address at `wp-admin/*.php`.
 * `ip-geo-block-backup-dir`       : absolute path where log files should be saved.
 * `ip-geo-block-maxmind-dir`      : absolute path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
@@ -275,13 +274,22 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 
 == Screenshots ==
 
-1. **IP Geo Plugin** - Settings.
-2. **IP Geo Plugin** - Statistics.
-3. **IP Geo Plugin** - Logs.
-4. **IP Geo Plugin** - Search.
-5. **IP Geo Plugin** - Attribution.
+1. **IP Geo Plugin** - Settings., screenshot-1.png
+2. **IP Geo Plugin** - Statistics., screenshot-2.png
+3. **IP Geo Plugin** - Logs., screenshot-3.png
+4. **IP Geo Plugin** - Search., screenshot-4.png
+5. **IP Geo Plugin** - Attribution., screenshot-5.png
 
 == Changelog ==
+
+= 2.0.2 =
+* **New feature:** Include `wp-admin/admin-post.php` as a validation target 
+  in the `Admin Area`. This feature is to protect against a vulnerability 
+  such as 
+  [Analysis of the Fancybox-For-WordPress Vulnerability](http://blog.sucuri.net/2015/02/analysis-of-the-fancybox-for-wordpress-vulnerability.html)
+  on Sucuri Blog.
+* Added a sample code snippet as a use case for 'Give ajax permission in 
+  case of safe actions on front facing page'. See Example 10 in `sample.php`.
 
 = 2.0.1 =
 * Fixed the issue of improper scheme from the HTTPS site when loading js 
