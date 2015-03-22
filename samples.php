@@ -171,7 +171,7 @@ add_filter( 'ip-geo-block-xmlrpc', 'my_whitelist' );
  * @return array $validate add 'result' as 'blocked' when NG word was found
  */
 function my_protectives( $validate ) {
-	if ( ! $validate['auth'] ) {
+	if ( ! is_user_logged_in() ) {
 		$protectives = array(
 			'wp-config.php',
 			'passwd',
@@ -193,8 +193,8 @@ add_filter( 'ip-geo-block-admin', 'my_protectives' );
 
 
 /**
- * Example 10: validate requested queries via admin-ajax.php
- * Use case: Give ajax permission in case of safe actions on front facing page
+ * Example 10: validate action of admin-ajax.php at front-end
+ * Use case: Give permission to ajax at public facing page
  *
  * @global array $_GET and $_POST requested queries
  * @param  array $validate
@@ -206,11 +206,8 @@ function my_permission( $validate ) {
 			'something',
 		);
 
-		foreach ( $permitted as $item ) {
-			if ( $item === $_REQUEST['action'] ) {
-				$validate['result'] = 'passed';
-				break;
-			}
+		if ( in_array( $_REQUEST['action'], $permitted ) ) {
+			$validate['result'] = 'passed';
 		}
 	}
 
@@ -220,7 +217,23 @@ add_filter( 'ip-geo-block-admin', 'my_permission' );
 
 
 /**
- * Example 11: validate ip address before authrization in admin area
+ * Example 11: validate action of admin-(ajax|post).php with ZEP at back-end
+ * Use case: Give permission to admin actions via `wp-admin/admin-(ajax|post).php`
+ *
+ * @param  array $admin_actions array of permitted admin actions
+ * @return array $admin_actions extended permitted admin actions
+ */
+function my_admin_actions( $admin_actions ) {
+	$actions = array(
+		'do-some-plugin-action',
+	);
+	return $admin_actions + $actions;
+}
+add_filter( 'ip-geo-block-admin-actions', 'my_admin_actions' );
+
+
+/**
+ * Example 12: validate ip address before authrization in admin area
  * Use case: When an emergency situation of your self being locked out
  *
  */
@@ -234,7 +247,7 @@ add_filter( 'ip-geo-block-admin', 'my_emergency' );
 
 
 /**
- * Example 12: backup validation logs to text files
+ * Example 13: backup validation logs to text files
  * Use case: keep verification logs selectively to text files
  *
  * @param  string $hook 'comment', 'login', 'admin' or 'xmlrpc'
@@ -251,21 +264,25 @@ add_filter( 'ip-geo-block-backup-dir', 'my_backup_dir', 10, 2 );
 
 
 /**
- * Example 13: usage of 'IP_Geo_Block::get_geolocation()'
- * Use case: get geolocation of ip address with latitude and longitude
+ * Example 14: usage of 'IP_Geo_Block::get_geolocation()'
+ * Use case: get geolocation of visitor's ip address with latitude and longitude
  *
- * @param  string $ip ip address
- * @param  array $providers list of providers
- * @return array $geolocation array of 'countryCode', 'latitude', 'longitude'
  */
-function my_geolocation( $ip ) {
-	$providers = array( 'ipinfo.io', 'Telize', 'IP-Json' );
-	$geolocation = IP_Geo_Block::get_geolocation( $ip, $providers );
+function my_geolocation() {
+	/**
+	 * get_geolocation( $ip = NULL, $providers = array(), $callback = 'get_location' )
+	 *
+	 * @param string $ip IP address / default $_SERVER['REMOTE_ADDR']
+	 * @param array $providers list of providers / ex: array( 'ipinfo.io' )
+	 * @param string $callback geolocation function / ex: 'get_county'
+	 * @return array or string geolocation data or just country code
+	 */
+	$geolocation = IP_Geo_Block::get_geolocation();
 
-	if ( empty( $geolocation['errorMessage'] ) )
-		echo va_dump( $geolocation );
+	if ( isset( $geolocation['countryCode'] ) )
+		var_dump( $geolocation );
 	else
-		echo $geolocation['errorMessage'];
+		var_dump( $geolocation['errorMessage'] );
 }
 
 endif;

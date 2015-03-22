@@ -20,7 +20,7 @@ class IP_Geo_Block {
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '2.0.2';
+	const VERSION = '2.0.3';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
 	const CACHE_KEY   = 'ip_geo_block_cache';
@@ -77,10 +77,24 @@ class IP_Geo_Block {
 		}
 
 		// wp-admin/{admin.php|admin-apax.php|admin-post.php} @since 2.5.0
-		$is_ajax = defined( 'DOING_AJAX' ) && DOING_AJAX;
-		if ( ( ! $is_ajax && $settings['validation']['admin'] ) ||
-		     (   $is_ajax && $settings['validation']['ajax' ] ) )
+		if ( $settings['validation']['admin'] || $settings['validation']['ajax'] )
 			add_action( 'admin_init', array( $this, 'validate_admin' ) );
+
+		// Load authenticated nonce
+		if ( is_user_logged_in() )
+			add_action( 'wp_enqueue_scripts', array( 'IP_Geo_Block', 'enqueue_nonce' ), 1 );
+	}
+
+	// Register and enqueue admin-specific style sheet and JavaScript.
+	public static function enqueue_nonce() {
+		wp_enqueue_script( $handle = IP_Geo_Block::PLUGIN_SLUG . '-auth-nonce',
+			plugins_url( 'admin/js/auth-nonce.js', IP_GEO_BLOCK_BASE ),
+			array( 'jquery' ), IP_Geo_Block::VERSION
+		);
+
+		wp_localize_script( $handle, 'IP_GEO_BLOCK_AUTH',
+			array( 'nonce' => wp_create_nonce( $handle ) )
+		);
 	}
 
 	// get default optional values
@@ -197,29 +211,24 @@ class IP_Geo_Block {
 	 * Get geolocation and country code from an ip address
 	 *
 	 */
-	public static function get_geolocation( $ip, $list = array(), $callback = 'get_location' ) {
-		$settings = self::get_option( 'settings' );
-		return self::_get_geolocation( $ip, $settings, $list, $callback );
-	}
-
-	private static function _get_geolocation( $ip, $settings, $list = array(), $callback = 'get_country' ) {
+	public static function get_geolocation( $ip = NULL, $providers = array(), $callback = 'get_location' ) {
 		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
 
-		// make providers list
-		if ( empty( $list ) ) {
-			$geo = IP_Geo_Block_Provider::get_providers( 'key', TRUE, TRUE );
-			foreach ( $geo as $provider => $key ) {
-				if ( ! empty( $settings['providers'][ $provider ] ) || (
-				     ! isset( $settings['providers'][ $provider ] ) && NULL === $key ) ) {
-					$list[] = $provider;
-				}
-			}
-		}
+		return self::_get_geolocation(
+			$ip ? $ip : $_SERVER['REMOTE_ADDR'],
+			self::get_option( 'settings' ), $providers, $callback
+		);
+	}
+
+	private static function _get_geolocation( $ip, $settings, $providers = array(), $callback = 'get_country' ) {
+		// make valid providers list
+		if ( empty( $providers ) )
+			$providers = IP_Geo_Block_Provider::get_valid_providers( $settings['providers'] );
 
 		// set arguments for wp_remote_get()
 		$args = self::get_request_headers( $settings );
 
-		foreach ( $list as $provider ) {
+		foreach ( $providers as $provider ) {
 			$time = microtime( TRUE );
 			$name = IP_Geo_Block_API::get_class_name( $provider );
 
@@ -270,7 +279,7 @@ class IP_Geo_Block {
 		else {
 			// Blacklist
 			$list = $settings['black_list'];
-			if ( ! $list || FALSE !== strpos( $list, $validate['code'] ) )
+			if ( $list && FALSE !== strpos( $list, $validate['code'] ) )
 				return $validate + array( 'result' => 'blocked' );
 			else if ( 'ZZ' !== $validate['code'] )
 				return $validate + array( 'result' => 'passed' );
@@ -308,23 +317,25 @@ class IP_Geo_Block {
 	 * Send response header with http code.
 	 *
 	 */
-	private function send_response( $code, $msg ) {
+	private function send_response( $code ) {
 		nocache_headers(); // nocache and response code
 		switch ( (int)substr( "$code", 0, 1 ) ) {
 		  case 2: // 2xx Success
-			header( 'Refresh: 0; url=' . home_url(), TRUE, $code ); // @since 3.0
+			header( 'Refresh: 0; url=' . home_url(), TRUE, (int)$code ); // @since 3.0
 			die();
 
 		  case 3: // 3xx Redirection
-			header( 'Location: http://blackhole.webpagetest.org/', TRUE, $code );
+			wp_redirect( 'http://blackhole.webpagetest.org/', (int)$code );
 			die();
 
 		  case 4: // 4xx Client Error ('text/html' is only for comment and login)
 			if ( ! defined( 'DOING_AJAX' ) && ! defined( 'XMLRPC_REQUEST' ) )
-				wp_die( $msg, 'Error', array( 'response' => $code, 'back_link' => TRUE ) );
+				wp_die( get_status_header_desc( $code ), '',
+					array( 'response' => (int)$code, 'back_link' => TRUE )
+				);
 
 		  default: // 5xx Server Error
-			status_header( $code ); // @since 2.0.0
+			status_header( (int)$code ); // @since 2.0.0
 			die();
 		}
 	}
@@ -349,27 +360,30 @@ class IP_Geo_Block {
 				foreach ( explode( ',', $_SERVER[ $var ] ) as $ip ) {
 					if ( ! in_array( $ip = trim( $ip ), $ips ) &&
 					     filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-						$ips[] = $ip;
+						$ips = array( $ip ) + $ips;
 					}
 				}
 			}
 		}
 
 		// check if the authentication has been already failed
-		$var = self::PLUGIN_SLUG . "-$hook";
+		$var = self::PLUGIN_SLUG . "-${hook}";
 		add_filter( $var, array( $this, 'auth_check' ), 10, 2 );
+
+		// make valid provider name list
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-apis.php' );
+		$providers = IP_Geo_Block_Provider::get_valid_providers( $settings['providers'] );
 
 		// apply custom filter of validation
 		// @usage add_filter( "ip-geo-block-$hook", 'my_validation' );
 		// @param $validate = array(
-		//     'ip'       => $ip,       /* ip address                          */
-		//     'time'     => $time,     /* processing time                     */
+		//     'ip'       => $ip,       /* validated ip address                */
+		//     'auth'     => $auth,     /* authenticated or not                */
 		//     'code'     => $code,     /* country code or reason of rejection */
-		//     'provider' => $provider, /* the name of validator               */
 		//     'result'   => $result,   /* 'passed', 'blocked' or 'unknown'    */
 		// );
 		foreach ( $ips as $ip ) {
-			$validate = self::_get_geolocation( $ip, $settings );
+			$validate = self::_get_geolocation( $ip, $settings, $providers );
 			$validate = apply_filters( $var, $validate, $settings );
 
 			// if no 'result' then validate ip address by country
@@ -403,11 +417,7 @@ class IP_Geo_Block {
 				$this->update_statistics( $validate );
 
 			// send response code to refuse
-			self::load_plugin_textdomain();
-			$this->send_response(
-				$settings['response_code'],
-				__( 'Sorry, but you cannot be accepted.', self::TEXT_DOMAIN )
-			);
+			$this->send_response( $settings['response_code'] );
 		}
 	}
 
@@ -432,10 +442,29 @@ class IP_Geo_Block {
 	}
 
 	public function validate_admin( $something ) {
-		$this->validate_ip(
-			defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ? 'xmlrpc' : 'admin',
-			self::get_option( 'settings' )
-		);
+		$type = NULL; // type of validation
+		global $pagenow; // http://codex.wordpress.org/Global_Variables
+
+		if ( ! empty( $_REQUEST['action'] ) ) {
+			switch ( $pagenow ) {
+			  case 'admin-ajax.php':
+				if ( ! has_action( "wp_ajax_nopriv_{$_REQUEST['action']}" ) )
+					$type = 'ajax';
+				break;
+			  case 'admin-post.php':
+				if ( ! has_action( "admin_post_nopriv_{$_REQUEST['action']}" ) )
+					$type = 'ajax';
+				break;
+			  case 'admin.php':
+				$type = 'admin';
+			}
+		}
+
+		$settings = self::get_option( 'settings' );
+		if ( $type && (int)$settings['validation'][ $type ] === 2 )
+			add_filter( self::PLUGIN_SLUG . '-admin', array( $this, 'check_nonce' ), 10, 2 );
+
+		$this->validate_ip( 'xmlrpc.php' === $pagenow ? 'xmlrpc' : 'admin', $settings );
 
 		return $something; // pass through
 	}
@@ -461,12 +490,12 @@ class IP_Geo_Block {
 			);
 
 			IP_Geo_Block_API_Cache::update_cache( $hook, $validate, $settings );
-		}
 
-		// (1) blocked, unknown, (3) unauthenticated, (5) all
-		if ( (int)$settings['validation']['reclogs'] & 1 ) {
-			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
-			IP_Geo_Block_Logs::record_log( $hook, $validate, $settings );
+			// (1) blocked, unknown, (3) unauthenticated, (5) all
+			if ( (int)$settings['validation']['reclogs'] & 1 ) {
+				require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+				IP_Geo_Block_Logs::record_log( $hook, $validate, $settings );
+			}
 		}
 
 		return $something; // pass through
@@ -477,6 +506,47 @@ class IP_Geo_Block {
 		$cache = IP_Geo_Block_API_Cache::get_cache( $validate['ip'] );
 		if ( $cache && $cache['fail'] >= $settings['login_fails'] )
 			$validate += array( 'result' => 'blocked' ); // can not overwrite
+
+		return $validate;
+	}
+
+	/**
+	 * validate requested queries via admin-(ajax|post).php
+	 *
+	 */
+	public function check_nonce( $validate, $settings ) {
+		// exclude core admin actions (this list is apparently redundant)
+		$admin_actions = apply_filters( self::PLUGIN_SLUG . '-admin-actions', array(
+			// $core_actions_get in wp-admin/admin-ajax.php
+			'fetch-list', 'ajax-tag-search', 'wp-compression-test', 'imgedit-preview', 'oembed-cache',
+			'autocomplete-user', 'dashboard-widgets', 'logged-in',
+
+			// $core_actions_post in wp-admin/admin-ajax.php
+			'oembed-cache', 'image-editor', 'delete-comment', 'delete-tag', 'delete-link',
+			'delete-meta', 'delete-post', 'trash-post', 'untrash-post', 'delete-page', 'dim-comment',
+			'add-link-category', 'add-tag', 'get-tagcloud', 'get-comments', 'replyto-comment',
+			'edit-comment', 'add-menu-item', 'add-meta', 'add-user', 'closed-postboxes',
+			'hidden-columns', 'update-welcome-panel', 'menu-get-metabox', 'wp-link-ajax',
+			'menu-locations-save', 'menu-quick-search', 'meta-box-order', 'get-permalink',
+			'sample-permalink', 'inline-save', 'inline-save-tax', 'find_posts', 'widgets-order',
+			'save-widget', 'set-post-thumbnail', 'date_format', 'time_format', 'wp-fullscreen-save-post',
+			'wp-remove-post-lock', 'dismiss-wp-pointer', 'upload-attachment', 'get-attachment',
+			'query-attachments', 'save-attachment', 'save-attachment-compat', 'send-link-to-editor',
+			'send-attachment-to-editor', 'save-attachment-order', 'heartbeat', 'get-revision-diffs',
+			'save-user-color-scheme', 'update-widget', 'query-themes', 'parse-embed', 'set-attachment-thumbnail',
+			'parse-media-shortcode', 'destroy-sessions',
+		) );
+
+		// check safe actions
+		$login = is_user_logged_in(); // or user_can_access_admin_page()
+		if ( $login && ! empty( $_REQUEST['action'] ) && in_array( $_REQUEST['action'], $admin_actions ) )
+			return $validate; // still potentially be blocked by country code
+
+		// check authenticated nonce
+		$action = self::PLUGIN_SLUG . '-auth-nonce';
+		if ( ! $login || empty( $_REQUEST[ $action ] ) ||
+		     ! wp_verify_nonce( $_REQUEST[ $action ], $action ) )
+			$validate['result'] = 'blocked';
 
 		return $validate;
 	}
