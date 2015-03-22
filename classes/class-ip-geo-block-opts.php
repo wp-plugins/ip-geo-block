@@ -41,8 +41,8 @@ class IP_Geo_Block_Options {
 			'validation'      => array(   // Action hook for validation
 			    'comment'     => TRUE,    // Validate on comment post
 			    'login'       => FALSE,   // Validate on login
-			    'admin'       => FALSE,   // Validate on admin
-			    'ajax'        => FALSE,   // Validate on admin ajax
+			    'admin'       => 0,       // Validate on admin
+			    'ajax'        => 0,       // Validate on admin ajax
 			    'xmlrpc'      => TRUE,    // Validate on xmlrpc
 			    'proxy'       => NULL,    // $_SERVER variables for IPs
 			    'reclogs'     => 0,       // 1:blocked 2:passed 3:unauth 4:auth 5:all
@@ -116,7 +116,7 @@ class IP_Geo_Block_Options {
 		if ( FALSE === ( $settings = get_option( $key[0] ) ) ) {
 			// get country code from admin's IP address and set it into white list
 			$name = array( 'ipinfo.io', 'Telize', 'IP-Json' ); shuffle( $name );
-			$tmp = IP_Geo_Block::get_geolocation( $_SERVER['REMOTE_ADDR'], $name, 'get_country' );
+			$tmp = IP_Geo_Block::get_geolocation( NULL, $name, 'get_country' );
 			$default[ $key[0] ]['white_list'] = isset( $tmp['code'] ) ? $tmp['code'] : NULL;
 
 			// update local goelocation database files
