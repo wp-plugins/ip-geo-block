@@ -6,10 +6,10 @@
 	var auth_nonce = 'ip-geo-block-auth-nonce';
 
 	function parse_uri(uri) {
-		var m = uri.match(
+		var m = uri ? uri.toString().match(
 			// https://tools.ietf.org/html/rfc3986#appendix-B
 			/^(?:([^:\/?#]+):)?(?:\/\/([^\/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/
-		);
+		) : [];
 
 		// scheme :// authority path ? query # fragment
 		return {
@@ -22,14 +22,14 @@
 	}
 
 	// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
-	function encodeURIComponentRFC3986 (str) {
+	function encodeURIComponentRFC3986(str) {
 		return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
 			return '%' + c.charCodeAt(0).toString(16);
 		});
 	}
 
 	function is_admin(url, query) {
-		var uri = parse_uri(url ? url.toLowerCase() : ''),
+		var uri = parse_uri(url ? url.toString().toLowerCase() : ''),
 		    http = /https?/.test(uri.scheme),
 		    path = uri.path || location.pathname;
 
@@ -55,7 +55,7 @@
 	}
 
 	function sanitize(str) {
-		return str.toString().replace(/[&<>"']/g, function (match) {
+		return str ? str.toString().replace(/[&<>"']/g, function (match) {
 			return {
 				'&' : '&amp;',
 				'<' : '&lt;',
@@ -63,11 +63,11 @@
 				'"' : '&quot;',
 				"'" : '&#39;'
 			}[match];
-		});
+		}) : '';
 	}
 
 	$(document).ajaxSend(function (event, jqxhr, settings) {
-		var nonce = IP_GEO_BLOCK_AUTH.nonce || null;
+		var nonce = IP_GEO_BLOCK_AUTH.nonce || '';
 		if (nonce && is_admin(settings.url, null/*settings.data*/) === 1) {
 			// multipart/form-data (XMLHttpRequest Level 2)
 			// IE10+, Firefox 4+, Safari 5+, Android 3+
@@ -97,10 +97,10 @@
 	});
 
 	$(function () {
-		var nonce = IP_GEO_BLOCK_AUTH.nonce || null;
+		var nonce = IP_GEO_BLOCK_AUTH.nonce || '';
 		if (nonce) {
 			$('a').on('click', function (event) {
-				var href = $(this).attr('href'),
+				var href = $(this).attr('href'), // String or undefined
 				    admin = is_admin(href, href);
 
 				// if target
