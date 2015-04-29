@@ -2,10 +2,10 @@
 # This file is distributed under the same license as the IP Geo Block package.
 msgid ""
 msgstr ""
-"Project-Id-Version: IP Geo Block 2.0.7\n"
+"Project-Id-Version: IP Geo Block 2.0.8\n"
 "Report-Msgid-Bugs-To: https://github.com/tokkonopapa/WordPress-IP-Geo-Block\n"
-"POT-Creation-Date: 2015-03-30 22:39+0900\n"
-"PO-Revision-Date: 2015-03-30 22:39+0900\n"
+"POT-Creation-Date: 2015-04-21 23:01+0900\n"
+"PO-Revision-Date: 2015-04-21 23:01+0900\n"
 "Last-Translator: tokkonopapa <tokkonopapa@yahoo.com>\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -25,57 +25,57 @@ msgid ""
 "access to the admin area posted from outside your nation."
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:149
-#: admin/class-ip-geo-block-admin.php:225
+#: admin/class-ip-geo-block-admin.php:147
+#: admin/class-ip-geo-block-admin.php:236
 msgid "Settings"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:163
+#: admin/class-ip-geo-block-admin.php:159
 msgid "Contribute at GitHub"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:180
-msgid "You need WordPress 3.7+"
-msgstr ""
-
-#: admin/class-ip-geo-block-admin.php:197
-#: admin/class-ip-geo-block-admin.php:198
+#: admin/class-ip-geo-block-admin.php:176
+#: admin/class-ip-geo-block-admin.php:177
 msgid "IP Geo Block"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:226
+#: admin/class-ip-geo-block-admin.php:195
+msgid "You need WordPress 3.7+."
+msgstr ""
+
+#: admin/class-ip-geo-block-admin.php:237
 msgid "Statistics"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:227
+#: admin/class-ip-geo-block-admin.php:238
 msgid "Logs"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:228
+#: admin/class-ip-geo-block-admin.php:239
 msgid "Search"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:229
+#: admin/class-ip-geo-block-admin.php:240
 msgid "Attribution"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:242
+#: admin/class-ip-geo-block-admin.php:253
 msgid "Thanks for providing these great services for free."
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:243
+#: admin/class-ip-geo-block-admin.php:254
 msgid ""
 "(Most browsers will redirect you to each site without referrer when you "
 "click the link.)"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:357 admin/includes/tab-settings.php:130
-#: admin/includes/tab-settings.php:151
+#: admin/class-ip-geo-block-admin.php:368 admin/includes/tab-settings.php:130
+#: admin/includes/tab-settings.php:152
 msgid "Enable"
 msgstr ""
 
-#: admin/class-ip-geo-block-admin.php:519
-msgid "Successfully updated"
+#: admin/class-ip-geo-block-admin.php:512
+msgid "Successfully updated."
 msgstr ""
 
 #: admin/includes/tab-accesslog.php:23 admin/includes/tab-accesslog.php:52
@@ -183,12 +183,12 @@ msgstr ""
 msgid "Validation settings"
 msgstr ""
 
-#: admin/includes/tab-settings.php:129 admin/includes/tab-settings.php:150
+#: admin/includes/tab-settings.php:129 admin/includes/tab-settings.php:151
 #: admin/includes/tab-settings.php:297
 msgid "Disable"
 msgstr ""
 
-#: admin/includes/tab-settings.php:131 admin/includes/tab-settings.php:152
+#: admin/includes/tab-settings.php:131 admin/includes/tab-settings.php:153
 msgid "Prevent zero-day exploit"
 msgstr ""
 
@@ -201,13 +201,13 @@ msgid ""
 "\" target=_blank>support forum</a> if you have any troubles with it."
 msgstr ""
 
-#: admin/includes/tab-settings.php:139
+#: admin/includes/tab-settings.php:140
 msgid ""
 "<dfn title=\"Validate access to wp-admin/admin-(ajax|post).php\">Admin ajax/"
 "post</dfn>"
 msgstr ""
 
-#: admin/includes/tab-settings.php:154
+#: admin/includes/tab-settings.php:155
 msgid ""
 "It will block a malicious request to <code>wp-admin/admin-(ajax|post).php</"
 "code> besides the country code. Because this is an experimental feature, "
@@ -217,39 +217,39 @@ msgid ""
 "any troubles with it."
 msgstr ""
 
-#: admin/includes/tab-settings.php:161
+#: admin/includes/tab-settings.php:162
 msgid "Matching rule"
 msgstr ""
 
-#: admin/includes/tab-settings.php:171
+#: admin/includes/tab-settings.php:172
 msgid "White list"
 msgstr ""
 
-#: admin/includes/tab-settings.php:172
+#: admin/includes/tab-settings.php:173
 msgid "Black list"
 msgstr ""
 
-#: admin/includes/tab-settings.php:180
+#: admin/includes/tab-settings.php:181
 #, php-format
 msgid "<dfn title=\"If empty then pass through\">White list</dfn> %s"
 msgstr ""
 
-#: admin/includes/tab-settings.php:189 admin/includes/tab-settings.php:205
-#: admin/includes/tab-settings.php:223 admin/includes/tab-settings.php:319
+#: admin/includes/tab-settings.php:190 admin/includes/tab-settings.php:206
+#: admin/includes/tab-settings.php:224 admin/includes/tab-settings.php:319
 msgid "(comma separated)"
 msgstr ""
 
-#: admin/includes/tab-settings.php:196
+#: admin/includes/tab-settings.php:197
 #, php-format
 msgid "<dfn title=\"If empty then pass through\">Black list</dfn> %s"
 msgstr ""
 
-#: admin/includes/tab-settings.php:213
+#: admin/includes/tab-settings.php:214
 msgid ""
 "<dfn title=\"ex) HTTP_X_FORWARDED_FOR\">$_SERVER keys for extra IPs</dfn>"
 msgstr ""
 
-#: admin/includes/tab-settings.php:230
+#: admin/includes/tab-settings.php:231
 #, php-format
 msgid "Response code %s"
 msgstr ""
@@ -362,6 +362,22 @@ msgstr ""
 msgid "Remove settings at uninstallation"
 msgstr ""
 
+#: admin/includes/tab-settings.php:513
+msgid "Delete DB table for validation logs"
+msgstr ""
+
+#: admin/includes/tab-settings.php:521
+msgid "Delete now"
+msgstr ""
+
+#: admin/includes/tab-settings.php:529
+msgid "Create DB table for validation logs"
+msgstr ""
+
+#: admin/includes/tab-settings.php:537
+msgid "Create now"
+msgstr ""
+
 #: admin/includes/tab-statistics.php:21 admin/includes/tab-statistics.php:149
 msgid "Statistics of validation"
 msgstr ""
@@ -440,10 +456,14 @@ msgid ""
 "<strong>you will be locked out</strong> when the cache expires."
 msgstr ""
 
-#: classes/class-ip-geo-block-logs.php:69
+#: classes/class-ip-geo-block-logs.php:70
 msgid ""
-"Creating a database table for verification log had failed. Once de-activate "
-"this plugin, and then activate again."
+"Creating a DB table for verification logs had failed. Once de-activate this "
+"plugin, and then activate again."
+msgstr ""
+
+#: includes/download.php:67
+msgid "Your database file is up-to-date."
 msgstr ""
 
 #: includes/download.php:90

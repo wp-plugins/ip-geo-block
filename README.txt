@@ -3,8 +3,8 @@ Contributors: tokkonopapa
 Donate link:
 Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc, login, wp-admin, ajax, security, brute force
 Requires at least: 3.7
-Tested up to: 4.1.1
-Stable tag: 2.0.7
+Tested up to: 4.2.1
+Stable tag: 2.0.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -27,7 +27,7 @@ vulnerability such as XSS, CSRF, SQLi, LFI and so on. For example, if a plugin
 has vulnerability of Local File Inclusion (LFI), the attackers can easily 
 download the `wp-config.php` without knowing the username and password by 
 simply hitting 
-    [wp-admin/admin-ajax.php?action=something-vulnerable&file=../wp-config.php](http://blog.sucuri.net/2014/09/slider-revolution-plugin-critical-vulnerability-being-exploited.html "Slider Revolution Plugin Critical Vulnerability Being Exploited | Sucuri Blog")
+    [wp-admin/admin-ajax.php?action=show-me&file=../wp-config.php](http://blog.sucuri.net/2014/09/slider-revolution-plugin-critical-vulnerability-being-exploited.html "Slider Revolution Plugin Critical Vulnerability Being Exploited | Sucuri Blog")
 on their browser.
 
 For these cases, the protection based on the IP address is not a perfect 
@@ -51,27 +51,29 @@ and reverse-brute-force attacks to the login form, XML-RPC and admin area.
  `wp-admin/admin-ajax.php`, `wp-admin/admin-post.php` will be validated by 
 means of a country code based on IP address.
 
-2. In order to prevent the invasion through the login form and XML-RPC 
-against the brute-force and the reverse-brute-force attacks, the number of 
-login attempts will be limited per IP address. This feature is independent 
-of the country code.
+2. In order to prevent the invasion through the login form and XML-RPC against 
+the brute-force and the reverse-brute-force attacks, the number of login 
+attempts will be limited per IP address. This feature works independently from 
+blocking by country code.
 
-3. Besides the country code, the original new feature '**Z**ero-day 
+3. Besides blocking by country code, the original new feature '**Z**ero-day 
 **E**xploit **P**revention for wp-admin' (WP-ZEP) is now available to block 
-malicious access to `wp-admin/admin.php`, `wp-admin/admin-ajax.php` and 
- `wp-admin/admin-post.php`. It will protect against certain types of attack 
-such as CSRF, SQLi and so on even if you have some 
+malicious access to `wp-admin/(admin|admin-ajax|admin-post).php`. It will 
+protect against certain types of attack such as CSRF, SQLi and so on even 
+if you have some 
     [vulnerable plugins](https://wpvulndb.com/ "WPScan Vulnerability Database")
 in your site. Because this is an experimental feature, please open an issue at 
     [support forum](https://wordpress.org/support/plugin/ip-geo-block "WordPress &#8250; Support &raquo; IP Geo Block")
 if you have any troubles. I'll be profoundly grateful your contribution to 
-improve this feature.
+improve this feature. See more details on 
+    [this plugin's blog](http://tokkonopapa.github.io/WordPress-IP-Geo-Block/ "Blog of IP Geo Block").
 
 4. HTTP Response code can be selected as `403 Forbidden` to deny access pages, 
  `404 Not Found` to hide pages or even `200 OK` to redirect to the top page.
 
-5. Referer silencer for external link. When you click an external hyperlink on 
-admin screen, http referer will be suppressed to hide a footprint of your site.
+5. Referer suppressor for external link. When you click an external hyperlink 
+on admin screen, http referer will be eliminated to hide a footprint of your 
+site.
 
 6. Validation logs will be recorded into MySQL data table to analyze posting 
 pattern under the specified condition.
@@ -101,7 +103,7 @@ full spec security plugin such as
 
 11. You can customize the basic behavior of this plugin via `add_filter()` with 
 pre-defined filter hook. See various use cases in 
-    [sample.php](https://github.com/tokkonopapa/WordPress-IP-Geo-Block/blob/master/ip-geo-block/samples.php "WordPress-IP-Geo-Block/samples.php at master - tokkonopapa/WordPress-IP-Geo-Block - GitHub")
+    [samples.php](https://github.com/tokkonopapa/WordPress-IP-Geo-Block/blob/master/ip-geo-block/samples.php "WordPress-IP-Geo-Block/samples.php at master - tokkonopapa/WordPress-IP-Geo-Block - GitHub")
 bundled within this package.
 
 = Attribution =
@@ -159,39 +161,11 @@ All contributions will always be welcome.
     Validate access to `wp-login.php`.
 
 * **Admin area**  
-    Validate access to `wp-admin/*.php` except `wp-admin/admin-(ajax|post).php`.
-
-* **Admin ajax/post**  
-    Validate access to `wp-admin/admin-(ajax|post).php`.
-
-* **Record validation statistics**  
-    If `Enable`, you can see `Statistics of validation` on Statistics tab.
-
-* **Record validation logs**  
-    If you select anything but `Disable`, you can see `Validation logs` on 
-    Logs tab.
-
-* **$_POST keys in logs**  
-    Normally, you can see just keys at `$_POST data:` on Logs tab. If you put 
-    some of interested keys into this textfield, you can see the value of key 
-    like `key=value`.
+    Validate access to `wp-admin/*.php`.
 
 * **$_SERVER keys for extra IPs**  
     Additional IP addresses will be validated if some of keys in `$_SERVER` 
     variable are specified in this textfield. Typically `HTTP_X_FORWARDED_FOR`.
-
-= Maxmind GeoLite settings =
-
-* **Auto updating (once a month)**
-    If `Enable`, Maxmind GeoLite database will be downloaded automatically 
-    by WordPress cron job.
-
-= Submission settings =
-
-* **Text position on comment form**  
-    If you want to put some text message on your comment form, please select
-    `Top` or `Bottom` and put text into the **Text message on comment form**
-    textfield.
 
 * **Matching rule**  
     Select `White list` (recommended) or `Black list` to specify the countries
@@ -210,6 +184,33 @@ All contributions will always be welcome.
     [Black Hole Server](http://blackhole.webpagetest.org/),
     the 4xx code will lead to WordPress error page, and the 5xx will pretend 
     an server error.
+
+= Record settings =
+
+* **Record validation statistics**  
+    If `Enable`, you can see `Statistics of validation` on Statistics tab.
+
+* **Record validation logs**  
+    If you select anything but `Disable`, you can see `Validation logs` on 
+    Logs tab.
+
+* **$_POST keys in logs**  
+    Normally, you can see just keys at `$_POST data:` on Logs tab. If you put 
+    some of interested keys into this textfield, you can see the value of key 
+    like `key=value`.
+
+= Maxmind GeoLite settings =
+
+* **Auto updating (once a month)**
+    If `Enable`, Maxmind GeoLite database will be downloaded automatically 
+    by WordPress cron job.
+
+= Submission settings =
+
+* **Text position on comment form**  
+    If you want to put some text message on your comment form, please select
+    `Top` or `Bottom` and put text into the **Text message on comment form**
+    textfield.
 
 = Cache settings =
 
@@ -238,25 +239,23 @@ Add the following codes to `functions.php` in your theme and upload it via FTP.
 add_filter( 'ip-geo-block-login', 'my_emergency' );
 add_filter( 'ip-geo-block-admin', 'my_emergency' );`
 
-Then `Clear statistics` at `Statistics` tab on your dashborad. After that, you 
-can remove above codes.
+Then `Clear cache` at `Statistics` tab on your dashborad. After that, you can 
+remove above codes.
 
 = How can I protect my `wp-config.php` against malicious access? =
 
 `function my_protectives( $validate ) {
-    if ( ! is_user_logged_in() ) {
-        $protectives = array(
-            'wp-config.php',
-            'passwd',
-        );
+    $blacklist = array(
+        'wp-config.php',
+        'passwd',
+    );
 
-        $req = strtolower( urldecode( serialize( $_GET + $_POST ) ) );
+    $req = strtolower( urldecode( serialize( $_GET + $_POST ) ) );
 
-        foreach ( $protectives as $item ) {
-            if ( strpos( $req, $item ) !== FALSE ) {
-                $validate['result'] = 'blocked';
-                break;
-            }
+    foreach ( $blacklist as $item ) {
+        if ( strpos( $req, $item ) !== FALSE ) {
+            $validate['result'] = 'blocked';
+            break;
         }
     }
 
@@ -274,31 +273,34 @@ Yes, here is the list of all hooks.
 * `ip-geo-block-xmlrpc`           : validate IP address at `xmlrpc.php`.
 * `ip-geo-block-login`            : validate IP address at `wp-login.php`.
 * `ip-geo-block-admin`            : validate IP address at `wp-admin/*.php`.
-* `ip-geo-block-admin-actions`    : array of actions for `wp-admin/admin-(ajax|post).php`.
-* `ip-geo-block-backup-dir`       : absolute path where log files should be saved.
-* `ip-geo-block-maxmind-dir`      : absolute path where Maxmind GeoLite DB files should be saved.
+* `ip-geo-block-admin-actions`    : array of actions for `wp-admin/(admin|admin-ajax|admin-post).php`.
+* `ip-geo-block-backup-dir`       : full path where log files should be saved.
+* `ip-geo-block-maxmind-dir`      : full path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
 * `ip-geo-block-maxmind-zip-ipv6` : url to Maxmind GeoLite DB zip file for IPv6.
-* `ip-geo-block-ip2location-path` : absolute path to IP2Location LITE DB file.
+* `ip-geo-block-ip2location-path` : full path to IP2Location LITE DB file.
 
-For more details, see `samples.php` bundled within this package.
+For more details, see 
+    [samples.php](https://github.com/tokkonopapa/WordPress-IP-Geo-Block/blob/master/ip-geo-block/samples.php "WordPress-IP-Geo-Block/samples.php at master - tokkonopapa/WordPress-IP-Geo-Block - GitHub")
+bundled within this package.
 
 = How does WP-ZEP prevent zero-day attack? =
 
-After reading the [Sucuri Blog](http://blog.sucuri.net/ "Home | Sucuri Blog") 
-widely, I found that a considerable number of vulnerable plugins are lacking 
-in validating either the nonce and privilege or both. WP-ZEP will make up both 
-of them embedding a nonce into the link, form and ajax request from jQuery on 
-every admin screen. 
+A considerable number of vulnerable plugins are lacking in validating either 
+the nonce and privilege or both. WP-ZEP will make up both of them embedding a 
+nonce into the link, form and ajax request from jQuery on every admin screen.
 
 This simple system will validate both of them on behalf of vulnerable plugins 
 in your site and will block a request with a query parameter `action` through 
- `wp-admin/admin.php` and `wp-admin/admin-(ajax|post).php` if it has no nonce 
-and privilege. Moreover, it doesn't affects a request from non-logged-in user.
+ `wp-admin/(admin|admin-ajax|admin-post).php` if it has no nonce and privilege.
+Moreover, it doesn't affects a request from non-logged-in user.
 
 On the other hand, the details of above process are slightly delicate. For 
 example, it's incapable of preventing Privilege Escalation (PE) because it 
 can't be decided which capabilities does the request need.
+
+See more details on 
+[this plugin's blog](http://tokkonopapa.github.io/WordPress-IP-Geo-Block/ "Blog of IP Geo Block").
 
 = Some admin function doesn't work when WP-ZEP is on. =
 
@@ -306,11 +308,11 @@ There are a few cases that WP-ZEP would not work. One is redirection at server
 side (by PHP or `.htaccess`) and client side (by JavaScript location object or 
 meta tag for refresh).
 
-Another is a restriction related to the content type. This plugin will only 
-support `application/x-www-form-urlencoded` and `multipart/form-data`.
+Another is the case related to the content type. This plugin will only support 
+ `application/x-www-form-urlencoded` and `multipart/form-data`.
 
-The other is the case that a ajax/post request comes from not jQuery but flash 
-or something.
+The other case is that a ajax/post request comes from not jQuery but flash or 
+something.
 
 In those cases, this plugin should bypass WP-ZEP. So please find the `action` 
 in the requested queries and add its value into the safe action list via the 
@@ -322,8 +324,7 @@ you are using at the support forum.
 = I want to use only WP-ZEP. =
 
 Uncheck the `Comment post`, `XML-RPC` and `Login form` in `Validation settings` 
-on `Setting` tab. And select `Prevent zero-day exploit` for `Admin area` and 
- `Admin ajax/post`
+on `Settings` tab. And select `Prevent zero-day exploit` for `Admin area`.
 
 At last empty the textfield of `White list` or `Black list` according to the 
  `Matching rule`.
@@ -350,6 +351,18 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 
 == Changelog ==
 
+= 2.0.8 =
+* Fixed an issue that a certain type of attack vector to the admin area (
+  [example](https://blog.sucuri.net/2014/08/database-takeover-in-custom-contact-forms.html "Critical Vulnerability Disclosed on WordPress Custom Contact Forms Plugin")
+  ) could not be blocked by the reason that some plugins accept it on earlier 
+  hook (ie `init`) than this plugin (previously `admin_init`).
+* Added re-creating DB table for validation logs in case of accidentally 
+  failed at activation process.
+* The time of day is shown with local time by adding GMT offset based on 
+  the time zone setting.
+* Optimized resource loading and settings to avoid redundancy.
+* See details at [this plugin's blog](http://tokkonopapa.github.io/WordPress-IP-Geo-Block/changelog/release-2.0.8.html "Release 2.0.8").
+
 = 2.0.7 =
 * Avoid JavaScript error which occurs if an anchor link has no `href`.
 * Improved UI on admin screen.
@@ -364,7 +377,7 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
   will be locked out from admin screen when the cache expires.
 * **Bug fix:** Fixed an issue of `get_geolocation()` method at a time of 
   when the cache of IP address is cleared.
-* Referer silencer now supports [meta referrer](https://wiki.whatwg.org/wiki/Meta_referrer "Meta referrer - WHATWG Wiki")
+* Referer suppressor now supports [meta referrer](https://wiki.whatwg.org/wiki/Meta_referrer "Meta referrer - WHATWG Wiki")
 
 = 2.0.3 =
 * **Bug fix:** Fixed an issue that empty black list doesn't work correctly 
@@ -373,7 +386,7 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
   Because it is an experimental feature, please open a new issue at 
   [support forum](https://wordpress.org/support/plugin/ip-geo-block "WordPress &#8250; Support &raquo; IP Geo Block")
   if you have any troubles with it.
-* **New feature:** Referer silencer for external link. When you click an 
+* **New feature:** Referer suppressor for external link. When you click an 
   external hyperlink on admin screen, http referer will be suppressed to 
   hide a footprint of your site.
 * Also added the filter hook `ip-geo-block-admin-actions` for safe actions 

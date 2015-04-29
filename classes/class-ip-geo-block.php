@@ -20,7 +20,7 @@ class IP_Geo_Block {
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '2.0.7';
+	const VERSION = '2.0.8';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
 	const CACHE_KEY   = 'ip_geo_block_cache';
@@ -76,13 +76,14 @@ class IP_Geo_Block {
 			add_action( 'wp_login_failed', array( $this, 'auth_fail' ) );
 		}
 
-		// wp-admin/{admin.php|admin-apax.php|admin-post.php} @since 2.5.0
-		if ( $settings['validation']['admin'] || $settings['validation']['ajax'] )
-			add_action( 'admin_init', array( $this, 'validate_admin' ) );
+		// wp-admin/(admin.php|admin-apax.php|admin-post.php) @since 2.5.0
+		if ( ( $settings['validation']['admin'] || 
+		       $settings['validation']['ajax' ] ) && is_admin() )
+			add_action( 'init', array( $this, 'validate_admin' ), $settings['priority'] );
 
 		// Load authenticated nonce
 		if ( is_user_logged_in() )
-			add_action( 'wp_enqueue_scripts', array( 'IP_Geo_Block', 'enqueue_nonce' ), 1 );
+			add_action( 'wp_enqueue_scripts', array( 'IP_Geo_Block', 'enqueue_nonce' ), $settings['priority'] );
 	}
 
 	// Register and enqueue admin-specific style sheet and JavaScript.
@@ -185,14 +186,6 @@ class IP_Geo_Block {
 			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
 			IP_Geo_Block_Logs::delete_log();
 		}
-	}
-
-	/**
-	 * Load the plugin text domain for translation.
-	 *
-	 */
-	public static function load_plugin_textdomain() {
-		load_plugin_textdomain( self::TEXT_DOMAIN, FALSE, dirname( IP_GEO_BLOCK_BASE ) . '/languages/' );
 	}
 
 	/**
@@ -442,26 +435,23 @@ class IP_Geo_Block {
 	}
 
 	public function validate_admin( $something ) {
-		$type = NULL; // type of validation
 		global $pagenow; // http://codex.wordpress.org/Global_Variables
+		$settings = self::get_option( 'settings' );
 
-		if ( ! empty( $_REQUEST['action'] ) ) {
+		if ( isset( $_REQUEST['action'] ) ) {
 			switch ( $pagenow ) {
 			  case 'admin-ajax.php':
-				if ( ! has_action( "wp_ajax_nopriv_{$_REQUEST['action']}" ) )
-					$type = 'ajax';
+				$type = has_action( "wp_ajax_nopriv_{$_REQUEST['action']}" ) ? NULL : 'ajax';
 				break;
 			  case 'admin-post.php':
-				if ( ! has_action( "admin_post_nopriv_{$_REQUEST['action']}" ) )
-					$type = 'ajax';
+				$type = has_action( "admin_post_nopriv_{$_REQUEST['action']}" ) ? NULL : 'ajax';
 				break;
 			  case 'admin.php':
 				$type = 'admin';
 			}
 		}
 
-		$settings = self::get_option( 'settings' );
-		if ( $type && (int)$settings['validation'][ $type ] === 2 )
+		if ( isset( $type ) && (int)$settings['validation'][ $type ] === 2 )
 			add_filter( self::PLUGIN_SLUG . '-admin', array( $this, 'check_nonce' ), 10, 2 );
 
 		$this->validate_ip( 'xmlrpc.php' === $pagenow ? 'xmlrpc' : 'admin', $settings );
@@ -515,7 +505,8 @@ class IP_Geo_Block {
 	 *
 	 */
 	public function check_nonce( $validate, $settings ) {
-		// exclude core admin actions (this list is apparently redundant)
+		// exclude core admin actions (defined in wp-admin/includes/ajax-actions.php)
+		// note: corresponding functions are not included until `admin_init`.
 		$admin_actions = apply_filters( self::PLUGIN_SLUG . '-admin-actions', array(
 			// $core_actions_get in wp-admin/admin-ajax.php
 			'fetch-list', 'ajax-tag-search', 'wp-compression-test', 'imgedit-preview', 'oembed-cache',
@@ -534,7 +525,8 @@ class IP_Geo_Block {
 			'query-attachments', 'save-attachment', 'save-attachment-compat', 'send-link-to-editor',
 			'send-attachment-to-editor', 'save-attachment-order', 'heartbeat', 'get-revision-diffs',
 			'save-user-color-scheme', 'update-widget', 'query-themes', 'parse-embed', 'set-attachment-thumbnail',
-			'parse-media-shortcode', 'destroy-sessions',
+			'parse-media-shortcode', 'destroy-sessions', 'install-plugin', 'update-plugin', 'press-this-save-post',
+			'press-this-add-category',
 		) );
 
 		// check safe actions
@@ -581,7 +573,7 @@ class IP_Geo_Block {
 	 * Database auto downloader.
 	 *
 	 */
-	public static function download_database( $only = NULL ) {
+	public static function download_database() {
 		require_once( IP_GEO_BLOCK_PATH . 'includes/download.php' );
 
 		// download database files
@@ -594,10 +586,6 @@ class IP_Geo_Block {
 
 		// re-schedule cron job
 		self::schedule_cron_job( $settings['update'], $settings['maxmind'] );
-
-		// update only the portion related to Maxmind
-		if ( $only )
-			$settings[ $only ] = TRUE;
 
 		// update option settings
 		update_option( self::$option_keys['settings'], $settings );

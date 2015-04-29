@@ -31,7 +31,7 @@
 	function is_admin(url, query) {
 		var uri = parse_uri(url ? url.toString().toLowerCase() : ''),
 		    http = /https?/.test(uri.scheme),
-		    path = uri.path || location.pathname;
+		    path = uri.path.charAt(0) === '/' ? uri.path : location.pathname;
 
 		// explicit scheme and external domain
 		if (http && uri.authority !== location.host.toLowerCase()) {
@@ -39,12 +39,11 @@
 		}
 
 		// check scheme, path, query
-		return (http || !uri.scheme) && (
-			path.indexOf('admin.php'     ) >= 0 ||
-			path.indexOf('admin-ajax.php') >= 0 ||
-			path.indexOf('admin-post.php') >= 0
+		return (
+			// under the wp-admin
+			path.indexOf('/wp-admin/') >= 0
 		) && (
-			// currently, request via jQuery ajax is always true
+			// if method is POST, then type of query is 'object'
 			typeof query === 'string' ? /(?:action)=/.test(query) : true
 		) ? 1 : 0; // 1: target, 0: other
 	}
@@ -103,7 +102,7 @@
 				var href = $(this).attr('href'), // String or undefined
 				    admin = is_admin(href, href);
 
-				// if target
+				// if admin area
 				if (admin === 1) {
 					var uri = parse_uri(href), data;
 					data = uri.query ? uri.query.split('&') : [];
@@ -117,6 +116,7 @@
 					var w = window.open();
 					w.document.write(
 						'<meta name="referrer" content="never" />' +
+						'<meta name="referrer" content="no-referrer" />' +
 						'<meta http-equiv="refresh" content="0; url=' + sanitize(this.href) + '" />'
 					);
 					w.document.close();
@@ -127,7 +127,7 @@
 			$('form').on('submit', function (event) {
 				var $this = $(this);
 
-				// if target
+				// if admin area
 				if (is_admin($this.attr('action'), $this.serialize()) === 1) {
 					$this.append(
 						'<input type="hidden" name="' + auth_nonce + '" value="'

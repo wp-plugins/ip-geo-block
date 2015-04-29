@@ -40,9 +40,9 @@ class IP_Geo_Block_Options {
 			'login_fails'     => 5,       // Limited number of login attempts
 			'validation'      => array(   // Action hook for validation
 			    'comment'     => TRUE,    // Validate on comment post
-			    'login'       => FALSE,   // Validate on login
+			    'login'       => TRUE,    // Validate on login
 			    'admin'       => 0,       // Validate on admin
-			    'ajax'        => 0,       // Validate on admin ajax
+			    'ajax'        => 0,       // Validate on ajax/post
 			    'xmlrpc'      => TRUE,    // Validate on xmlrpc
 			    'proxy'       => NULL,    // $_SERVER variables for IPs
 			    'reclogs'     => 0,       // 1:blocked 2:passed 3:unauth 4:auth 5:all
@@ -68,6 +68,8 @@ class IP_Geo_Block_Options {
 			    'ipv4_last'   => NULL,    // Last-Modified of DB file
 			    'ipv6_last'   => NULL,    // Last-Modified of DB file
 			),
+			// since version 2.0.8
+			'priority'        => 0,       // Action priority for WP-ZEP
 		),
 
 		// statistics (autoloaded since version 1.2.1)
@@ -162,6 +164,9 @@ class IP_Geo_Block_Options {
 				foreach ( array( 'maxlogs', 'backup' ) as $tmp )
 					$settings['validation'][ $tmp ] = $default[ $key[0] ]['validation'][ $tmp ];
 			}
+
+			if ( version_compare( $settings['version'], '2.0.8' ) < 0 )
+				$settings['priority'] = $default[ $key[0] ]['priority'];
 
 			// update local goelocation database files
 			$settings['ip2location']['ipv4_path'] = $ip2;
