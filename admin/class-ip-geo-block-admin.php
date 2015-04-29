@@ -18,12 +18,6 @@ class IP_Geo_Block_Admin {
 	protected static $instance = null;
 
 	/**
-	 * Slug of the plugin screen.
-	 *
-	 */
-	protected $plugin_screen_hook_suffix = null;
-
-	/**
 	 * Slug of the admin page.
 	 *
 	 */
@@ -35,26 +29,21 @@ class IP_Geo_Block_Admin {
 	 * and adding a settings page and menu.
 	 */
 	private function __construct() {
-		// load plugin text domain
-		add_action( 'init', 'IP_Geo_Block::load_plugin_textdomain' );
-
 		// Set unique slug for admin page.
 		foreach ( IP_Geo_Block::$option_keys as $key => $val ) {
 			$this->option_slug[ $key ] = str_replace( '_', '-', $val );
 			$this->option_name[ $key ] = $val;
 		}
 
-		// Load authenticated nonce
+		// Load plugin text domain.
+		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
+
+		// Setup a nonce to validate authentication.
 		add_action( 'admin_enqueue_scripts', array( 'IP_Geo_Block', 'enqueue_nonce' ) );
 
 		// Add the options page and menu item.
-		add_action( 'admin_menu', array( $this, 'add_plugin_admin_menu' ) );
-		add_action( 'admin_init', array( $this, 'register_admin_settings' ) );
+		add_action( 'admin_menu', array( $this, 'setup_admin_screen' ) );
 		add_action( 'wp_ajax_ip_geo_block', array( $this, 'admin_ajax_callback' ) );
-
-		// Add an action link pointing to the options page. @since 2.7
-		add_filter( 'plugin_action_links_' . IP_GEO_BLOCK_BASE, array( $this, 'add_action_links' ), 10, 1 );
-		add_filter( 'plugin_row_meta', array( $this, 'add_plugin_meta_links' ), 10, 2 );
 	}
 
 	/**
@@ -67,6 +56,14 @@ class IP_Geo_Block_Admin {
 			self::$instance = new self;
 
 		return self::$instance;
+	}
+
+	/**
+	 * Load the plugin text domain for translation.
+	 *
+	 */
+	public function load_plugin_textdomain() {
+		load_plugin_textdomain( IP_Geo_Block::TEXT_DOMAIN, FALSE, dirname( IP_GEO_BLOCK_BASE ) . '/languages/' );
 	}
 
 	/**
@@ -95,7 +92,7 @@ class IP_Geo_Block_Admin {
 	 * Register and enqueue plugin-specific style sheet and JavaScript.
 	 *
 	 */
-	public function enqueue_plugin_assets() {
+	public function enqueue_admin_assets() {
 		// css for option page
 		wp_enqueue_style( IP_Geo_Block::PLUGIN_SLUG . '-admin-styles',
 			plugins_url( 'css/admin.css', __FILE__ ),
@@ -110,10 +107,12 @@ class IP_Geo_Block_Admin {
 
 		// js for google map
 		$footer = TRUE;
-		wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-google-map',
-			'//maps.google.com/maps/api/js?sensor=false',
-			array( 'jquery' ), IP_Geo_Block::VERSION, $footer
-		);
+		if ( isset( $_GET['tab'] ) && (int)$_GET['tab'] === 2 ) {
+			wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-google-map',
+				'//maps.google.com/maps/api/js?sensor=false',
+				array( 'jquery' ), IP_Geo_Block::VERSION, $footer
+			);
+		}
 
 		// js for footable https://github.com/bradvin/FooTable
 		wp_enqueue_script( IP_Geo_Block::PLUGIN_SLUG . '-footable-js',
@@ -143,14 +142,12 @@ class IP_Geo_Block_Admin {
 	 *
 	 */
 	public function add_action_links( $links ) {
-
 		return array_merge(
 			array(
 				'settings' => '<a href="' . admin_url( 'options-general.php?page=' . IP_Geo_Block::PLUGIN_SLUG ) . '">' . __( 'Settings' ) . '</a>'
 			),
 			$links
 		);
-
 	}
 
 	/**
@@ -158,7 +155,6 @@ class IP_Geo_Block_Admin {
 	 *
 	 */
 	public function add_plugin_meta_links( $links, $file ) {
-
 		if ( $file === IP_GEO_BLOCK_BASE ) {
 			$title = __( 'Contribute at GitHub', IP_Geo_Block::TEXT_DOMAIN );
 			array_push(
@@ -166,32 +162,17 @@ class IP_Geo_Block_Admin {
 				"<a href=\"https://github.com/tokkonopapa/WordPress-IP-Geo-Block\" title=\"$title\" target=_blank>$title</a>"
 			);
 		}
-		return $links;
 
+		return $links;
 	}
 
 	/**
 	 * Register the administration menu into the WordPress Dashboard menu.
 	 *
 	 */
-	public function add_plugin_admin_menu() {
-		// Check version and compatibility
-		if ( version_compare( get_bloginfo( 'version' ), '3.7' ) < 0 )
-			$this->notice[] = __( 'You need WordPress 3.7+', IP_Geo_Block::TEXT_DOMAIN );
-
-		// Check creation of database table
-		$settings = IP_Geo_Block::get_option( 'settings' );
-		if ( $settings['validation']['reclogs'] ) {
-			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
-			if ( $error = IP_Geo_Block_Logs::diag_table() )
-				$this->notice[] = $error;
-		}
-
-		if ( isset( $this->notice ) )
-			add_action( 'admin_notices', array( $this, 'admin_notice' ) );
-
+	private function add_plugin_admin_menu() {
 		// Add a settings page for this plugin to the Settings menu.
-		$this->plugin_screen_hook_suffix = add_options_page(
+		$hook = add_options_page(
 			__( 'IP Geo Block', IP_Geo_Block::TEXT_DOMAIN ),
 			__( 'IP Geo Block', IP_Geo_Block::TEXT_DOMAIN ),
 			'manage_options',
@@ -199,13 +180,45 @@ class IP_Geo_Block_Admin {
 			array( $this, 'display_plugin_admin_page' )
 		);
 
-		// If successful, load admin assets only on that page.
-		if ( $this->plugin_screen_hook_suffix ) {
-			add_action(
-				'load-' . $this->plugin_screen_hook_suffix,
-				array( $this, 'enqueue_plugin_assets' )
-			);
+		// If successful, load admin assets only on this page.
+		if ( $hook )
+			add_action( "load-$hook", array( $this, 'enqueue_admin_assets' ) );
+	}
+
+	/**
+	 * Diagnosis of admin settings.
+	 *
+	 */
+	private function diagnose_admin_screen() {
+		// Check version and compatibility
+		if ( version_compare( get_bloginfo( 'version' ), '3.7' ) < 0 )
+			$this->notice[] = __( 'You need WordPress 3.7+.', IP_Geo_Block::TEXT_DOMAIN );
+
+		// Check creation of database table
+		$settings = IP_Geo_Block::get_option( 'settings' );
+		if ( $settings['validation']['reclogs'] ) {
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+			if ( ( $warn = IP_Geo_Block_Logs::diag_table() ) &&
+			     FALSE === IP_Geo_Block_Logs::create_log() )
+				$this->notice[] = $warn;
 		}
+
+		if ( isset( $this->notice ) )
+			add_action( 'admin_notices', array( $this, 'admin_notice' ) );
+	}
+
+	/**
+	 * Setup the options page and menu item.
+	 *
+	 */
+	public function setup_admin_screen() {
+		$this->add_plugin_admin_menu();
+		$this->diagnose_admin_screen();
+		$this->register_admin_settings();
+
+		// Add an action link pointing to the options page. @since 2.7
+		add_filter( 'plugin_action_links_' . IP_GEO_BLOCK_BASE, array( $this, 'add_action_links' ), 10, 1 );
+		add_filter( 'plugin_row_meta', array( $this, 'add_plugin_meta_links' ), 10, 2 );
 	}
 
 	/**
@@ -251,7 +264,7 @@ class IP_Geo_Block_Admin {
 	 * Initializes the options page by registering the Sections, Fields, and Settings
 	 *
 	 */
-	public function register_admin_settings() {
+	private function register_admin_settings() {
 		$tab = isset( $_GET['tab'] ) ? (int)$_GET['tab'] : 0;
 		switch( min( 4, max( 0, $tab ) ) ) {
 		  case 0:
@@ -387,19 +400,10 @@ class IP_Geo_Block_Admin {
 		$output = IP_Geo_Block::get_option( $option_name );
 		$default = IP_Geo_Block::get_default( $option_name );
 
-		// extract key with 'only-' on its top
-		$only = array_keys( array_diff_key( $input, $output ) );
-		$only = array_shift( $only );
-		$only = strpos( $only, 'only-' ) === 0 ? substr( $only, 5 ) : NULL;
-
 		/**
 		 * Sanitize a string from user input
 		 */
 		foreach ( $output as $key => $value ) {
-			// skip except specified key
-			if ( $only && $only !== $key ) 
-				continue;
-
 			// delete old key
 			if ( ! array_key_exists( $key, $default ) ) {
 				unset( $output[ $key ] );
@@ -505,7 +509,7 @@ class IP_Geo_Block_Admin {
 
 		// Register a settings error to be displayed to the user
 		$this->setting_notice( $option_name, 'updated',
-			__( 'Successfully updated', IP_Geo_Block::TEXT_DOMAIN )
+			__( 'Successfully updated.', IP_Geo_Block::TEXT_DOMAIN )
 		);
 
 		return $output;
@@ -538,7 +542,7 @@ class IP_Geo_Block_Admin {
 		switch ( isset( $_POST['cmd'  ] ) ? $_POST['cmd'  ] : NULL ) {
 		  case 'download':
 			if ( 'maxmind' === $which )
-				$res = IP_Geo_Block::download_database( 'only-maxmind' );
+				$res = IP_Geo_Block::download_database();
 			break;
 
 		  case 'search':
@@ -612,7 +616,7 @@ class IP_Geo_Block_Admin {
 				$n = 0;
 				foreach ( $rows as $logs ) {
 					$log = (int)array_shift( $logs );
-					$html .= "<tr><td data-value=\'$log\'>";
+					$html .= "<tr><td data-value=$log>";
 					$html .= ip_geo_block_localdate( $log, 'Y-m-d H:i:s' ) . "</td>";
 					foreach ( $logs as $log ) {
 						$log = esc_html( $log );
@@ -624,6 +628,16 @@ class IP_Geo_Block_Admin {
 				$res[ $hook ] = $html;
 			}
 			break;
+
+		  case 'create_table':
+		  case 'delete_table':
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+			'create_table' === $_POST['cmd'] ?
+				IP_Geo_Block_Logs::create_log() :
+				IP_Geo_Block_Logs::delete_log();
+			$res = array(
+				'page' => "options-general.php?page=" . IP_Geo_Block::PLUGIN_SLUG,
+			);
 		}
 
 		if ( isset( $res ) ) // wp_send_json_{success,error}() @since 3.5.0
