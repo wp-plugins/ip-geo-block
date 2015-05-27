@@ -5,7 +5,7 @@
  * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
- * @link      http://tokkono.cute.coocan.jp/blog/slow/
+ * @link      https://github.com/tokkonopapa
  * @copyright 2013-2015 tokkonopapa
  */
 
@@ -114,7 +114,7 @@ abstract class IP_Geo_Block_API {
 		  // decode xml
 		  case 'xml':
 			$tmp = "/\<(.+?)\>(?:\<\!\[CDATA\[)?(.*?)(?:\]\]\>)?\<\/\\1\>/i";
-			if ( @preg_match_all( $tmp, $res, $matches ) !== FALSE ) {
+			if ( preg_match_all( $tmp, $res, $matches ) !== FALSE ) {
 				if ( is_array( $matches[1] ) && ! empty( $matches[1] ) ) {
 					foreach ( $matches[1] as $key => $val ) {
 						$data[ $val ] = $matches[2][ $key ];
@@ -150,7 +150,7 @@ abstract class IP_Geo_Block_API {
 
 		// if country code is '-' or 'UNDEFINED' then error.
 		if ( $res && ! empty( $res['countryCode'] ) )
-			return @preg_match( '/^[A-Z]{2}/', $res['countryCode'], $matches ) ? $matches[0] : NULL;
+			return preg_match( '/^[A-Z]{2}/', $res['countryCode'], $matches ) ? $matches[0] : NULL;
 		else
 			return NULL;
 	}
@@ -160,7 +160,7 @@ abstract class IP_Geo_Block_API {
 	 *
 	 */
 	public static function get_class_name( $provider ) {
-		$provider = 'IP_Geo_Block_API_' . @preg_replace( '/[\W]/', '', $provider );
+		$provider = 'IP_Geo_Block_API_' . preg_replace( '/[\W]/', '', $provider );
 		return class_exists( $provider ) ? $provider : NULL;
 	}
 }
@@ -470,7 +470,7 @@ class IP_Geo_Block_API_IP2Location extends IP_Geo_Block_API {
 			$file = IP_GEO_BLOCK_IP2LOC_IPV4;
 			$type = IP_GEO_BLOCK_API_TYPE_IPV4;
 		}
-		else if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
+		elseif ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) ) {
 			$file = IP_GEO_BLOCK_IP2LOC_IPV4; // currently, support only one file
 			$type = IP_GEO_BLOCK_API_TYPE_IPV6;
 		}
@@ -537,7 +537,7 @@ class IP_Geo_Block_API_Maxmind extends IP_Geo_Block_API {
 		// setup database file and function
 		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) )
 			$file = IP_GEO_BLOCK_MAXMIND_IPV4;
-		else if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) )
+		elseif ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6 ) )
 			$file = IP_GEO_BLOCK_MAXMIND_IPV6;
 		else
 			return array( 'errorMessage' => 'illegal format' );

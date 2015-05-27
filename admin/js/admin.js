@@ -42,7 +42,12 @@ var ip_geo_block_start = new Date();
 
 	function redirect(page, tab) {
 		if (-1 !== location.href.indexOf(page)) {
-			window.location.href = sanitize(page) + (tab ? '&' + sanitize(tab) : '');
+			var url = sanitize(page) + (tab ? '&' + sanitize(tab) : '');
+			if (typeof IP_GEO_BLOCK_ZEP === 'undefined') {
+				window.location.href = url;
+			} else {
+				IP_GEO_BLOCK_ZEP.redirect(url);
+			}
 		}
 	}
 
@@ -215,11 +220,12 @@ var ip_geo_block_start = new Date();
 	}
 
 	// Show/Hide description of WP-ZEP
-	function show_description(select, id) {
-		if (2 == $(select).val()) {
-			$(id).show();
+	function show_description(select) {
+		var desc = '.ip_geo_block_settings_validation_desc';
+		if (2 <= (select = $(select)).val()) {
+			select.next(desc).show();
 		} else {
-			$(id).hide();
+			select.next(desc).hide();
 		}
 	}
 
@@ -304,12 +310,11 @@ var ip_geo_block_start = new Date();
 		});
 
 		// Show/Hide description of WP-ZEP
-		$('#ip_geo_block_settings_validation_admin').on('change', function (event) {
-			show_description(this, '#ip-geo-block-admin-desc');
-		}).trigger('change');
-
-		$('#ip_geo_block_settings_validation_ajax').on('change', function (event) {
-			show_description(this, '#ip-geo-block-ajax-desc');
-		}).trigger('change');
+		var item = ['admin', 'ajax', 'plugins', 'themes'], i;
+		for (i = 0; i < item.length; i++) {
+			$('#ip_geo_block_settings_validation_' + item[i]).on('change', function (event) {
+				show_description(this);
+			}).trigger('change');
+		}
 	});
 }(jQuery));

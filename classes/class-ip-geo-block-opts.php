@@ -5,7 +5,7 @@
  * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
- * @link      http://tokkono.cute.coocan.jp/blog/slow/
+ * @link      https://github.com/tokkonopapa
  * @copyright 2013-2015 tokkonopapa
  */
 
@@ -50,6 +50,9 @@ class IP_Geo_Block_Options {
 			    // since version 1.3.1
 			    'maxlogs'     => 100,     // Max number of rows of log
 			    'backup'      => NULL,    // Absolute path to directory for backup
+			    // since version 2.1.0
+			    'plugins'     => 0,       // Validate on wp-content/plugins
+			    'themes'      => 0,       // Validate on wp-content/themes
 			),
 			'update'          => array(   // Updating IP address DB
 			    'auto'        => TRUE,    // Auto updating of DB file
@@ -119,7 +122,7 @@ class IP_Geo_Block_Options {
 			// get country code from admin's IP address and set it into white list
 			$name = array( 'ipinfo.io', 'Telize', 'IP-Json' ); shuffle( $name );
 			$tmp = IP_Geo_Block::get_geolocation( NULL, $name, 'get_country' );
-			$default[ $key[0] ]['white_list'] = isset( $tmp['code'] ) ? $tmp['code'] : NULL;
+			$default[ $key[0] ]['white_list'] = 'ZZ' !== $tmp['code'] ? $tmp['code'] : NULL;
 
 			// update local goelocation database files
 			$default[ $key[0] ]['ip2location']['ipv4_path'] = $ip2;
@@ -167,6 +170,11 @@ class IP_Geo_Block_Options {
 
 			if ( version_compare( $settings['version'], '2.0.8' ) < 0 )
 				$settings['priority'] = $default[ $key[0] ]['priority'];
+
+			if ( version_compare( $settings['version'], '2.1.0' ) < 0 ) {
+				foreach ( array( 'plugins', 'themes' ) as $tmp )
+					$settings['validation'][ $tmp ] = $default[ $key[0] ]['validation'][ $tmp ];
+			}
 
 			// update local goelocation database files
 			$settings['ip2location']['ipv4_path'] = $ip2;
