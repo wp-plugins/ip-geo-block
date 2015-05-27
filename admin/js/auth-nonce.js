@@ -2,9 +2,21 @@
  * WP-ZEP - Zero-day exploit Prevention for wp-admin
  *
  */
-(function ($) {
-	var auth_nonce = 'ip-geo-block-auth-nonce';
+/* utility object */
+var IP_GEO_BLOCK_ZEP = {
+	auth: 'ip-geo-block-auth-nonce',
+	nonce: IP_GEO_BLOCK_AUTH.nonce || '',
+	redirect: function (url) {
+		if (-1 !== location.href.indexOf(url)) {
+			if (this.nonce) {
+				url += (url.indexOf('?') >= 0 ? '&' : '?') + this.auth + '=' + this.nonce;
+			} 
+			window.location.href = url;
+		}
+	}
+};
 
+(function ($) {
 	function parse_uri(uri) {
 		var m = uri ? uri.toString().match(
 			// https://tools.ietf.org/html/rfc3986#appendix-B
@@ -30,22 +42,20 @@
 
 	function is_admin(url, query) {
 		var uri = parse_uri(url ? url.toString().toLowerCase() : ''),
-		    http = /https?/.test(uri.scheme),
-		    path = uri.path.charAt(0) === '/' ? uri.path : location.pathname;
+		    // directory traversal should be checked more strictly ?
+		    path = (uri.path.replace('/\./g', '').charAt(0) === '/' ? uri.path : location.pathname);
 
 		// explicit scheme and external domain
-		if (http && uri.authority !== location.host.toLowerCase()) {
+		if (/https?/.test(uri.scheme) && uri.authority !== location.host.toLowerCase()) {
 			return -1; // -1: external
 		}
 
-		// check scheme, path, query
-		return (
-			// under the wp-admin
-			path.indexOf('/wp-admin/') >= 0
-		) && (
-			// if method is POST, then type of query is 'object'
-			typeof query === 'string' ? /(?:action)=/.test(query) : true
-		) ? 1 : 0; // 1: target, 0: other
+		var regexp = new RegExp(
+			'/(?:wp-admin/|' + IP_GEO_BLOCK_AUTH.plugins + '|' + IP_GEO_BLOCK_AUTH.themes + ')'
+		);
+
+		// possibly scheme is `javascript` or path is `;`
+		return (uri.scheme || uri.path || uri.query) && path.match(regexp) ? 1: 0;
 	}
 
 	function query_args(uri, args) {
@@ -66,13 +76,13 @@
 	}
 
 	$(document).ajaxSend(function (event, jqxhr, settings) {
-		var nonce = IP_GEO_BLOCK_AUTH.nonce || '';
+		var nonce = IP_GEO_BLOCK_ZEP.nonce;
 		if (nonce && is_admin(settings.url, null/*settings.data*/) === 1) {
 			// multipart/form-data (XMLHttpRequest Level 2)
 			// IE10+, Firefox 4+, Safari 5+, Android 3+
 			if (typeof window.FormData !== 'undefined' &&
 			    settings.data instanceof FormData) {
-				settings.data.append(auth_nonce, nonce);
+				settings.data.append(IP_GEO_BLOCK_ZEP.auth, nonce);
 			}
 
 			// application/x-www-form-urlencoded
@@ -84,11 +94,11 @@
 				var uri = parse_uri(settings.url), data;
 				if (typeof settings.data === 'undefined' || uri.query) {
 					data = uri.query ? uri.query.split('&') : [];
-					data.push(auth_nonce + '=' + encodeURIComponentRFC3986(nonce));
+					data.push(IP_GEO_BLOCK_ZEP.auth + '=' + encodeURIComponentRFC3986(nonce));
 					settings.url = query_args(uri, data);
 				} else {
 					data = settings.data ? settings.data.split('&') : [];
-					data.push(auth_nonce + '=' + encodeURIComponentRFC3986(nonce));
+					data.push(IP_GEO_BLOCK_ZEP.auth + '=' + encodeURIComponentRFC3986(nonce));
 					settings.data = data.join('&');
 				}
 			}
@@ -96,9 +106,9 @@
 	});
 
 	$(function () {
-		var nonce = IP_GEO_BLOCK_AUTH.nonce || '';
+		var nonce = IP_GEO_BLOCK_ZEP.nonce;
 		if (nonce) {
-			$('a').on('click', function (event) {
+			$('body').on('click', 'a', function (event) {
 				var href = $(this).attr('href'), // String or undefined
 				    admin = is_admin(href, href);
 
@@ -106,7 +116,7 @@
 				if (admin === 1) {
 					var uri = parse_uri(href), data;
 					data = uri.query ? uri.query.split('&') : [];
-					data.push(auth_nonce + '=' + encodeURIComponentRFC3986(nonce));
+					data.push(IP_GEO_BLOCK_ZEP.auth + '=' + encodeURIComponentRFC3986(nonce));
 					$(this).attr('href', query_args(uri, data));
 				}
 
@@ -124,13 +134,13 @@
 				}
 			});
 
-			$('form').on('submit', function (event) {
+			$('body').on('submit', 'form', function (event) {
 				var $this = $(this);
 
 				// if admin area
 				if (is_admin($this.attr('action'), $this.serialize()) === 1) {
 					$this.append(
-						'<input type="hidden" name="' + auth_nonce + '" value="'
+						'<input type="hidden" name="' + IP_GEO_BLOCK_ZEP.auth + '" value="'
 						+ sanitize(nonce) + '" />'
 					);
 				}

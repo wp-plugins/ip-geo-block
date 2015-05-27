@@ -5,7 +5,7 @@
  * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
- * @link      http://tokkono.cute.coocan.jp/blog/slow/
+ * @link      https://github.com/tokkonopapa
  * @copyright 2013-2015 tokkonopapa
  */
 
@@ -41,7 +41,7 @@ class IP_Geo_Block_Logs {
  PRIMARY KEY (`No`),
  KEY `time` (`time`),
  KEY `hook` (`hook`)
-) CHARACTER SET utf8" ); // ENGINE=InnoDB or MyISAM
+) CHARACTER SET utf8" ); // utf8mb4 ENGINE=InnoDB or MyISAM
 	}
 
 	public static function delete_log() {
@@ -82,7 +82,7 @@ class IP_Geo_Block_Logs {
 
 		if ( $time < 75 /* msec */ )
 			return (int)$options['validation']['maxlogs'];
-		else if ( $time < 150 /* msec */ )
+		elseif ( $time < 150 /* msec */ )
 			return (int)($options['validation']['maxlogs'] / 2);
 
 		return (int)($options['validation']['maxlogs'] / 5);
@@ -94,7 +94,7 @@ class IP_Geo_Block_Logs {
 	 * @note code from wp_check_invalid_utf8() in wp-includes/formatting.php
 	 * @link https://core.trac.wordpress.org/browser/trunk/src/wp-includes/formatting.php
 	 */
-	private static function validate_utf8( $str ) {
+	public static function validate_utf8( $str ) {
 		$str = (string) $str;
 		if ( 0 === strlen( $str ) )
 			return '';
@@ -114,15 +114,19 @@ class IP_Geo_Block_Logs {
 		// Check support for utf8 in the installed PCRE library
 		static $utf8_pcre = NULL;
 		if ( $utf8_pcre === NULL )
-			$utf8_pcre = @preg_match( '/^./u', 'a' );
+			$utf8_pcre = preg_match( '/^./u', 'a' );
 
 		// if no support then reject $str for safety
 		if ( ! $utf8_pcre )
 			return '…';
 
 		// preg_match fails when it encounters invalid UTF8 in $str
-		if ( 1 === @preg_match( '/^./us', $str ) )
-			return $str;
+		if ( 1 === preg_match( '/^./us', $str ) ) {
+			// remove utf8mb4 4 bytes character
+			// @see strip_invalid_text() in wp-includes/wp-db.php
+			$regex = '/(?:\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})/';
+			return preg_replace( $regex, '', $str );
+		}
 
 		return '…';
 	}
@@ -136,9 +140,9 @@ class IP_Geo_Block_Logs {
 	 */
 	private static function truncate_utf8( $str, $regexp = NULL, $replace = '', $len = IP_GEO_BLOCK_MAX_STR_LEN ) {
 		// remove unnecessary characters
-		$str = @preg_replace( '/[\x00-\x1f\x7f]/', '', $str );
+		$str = preg_replace( '/[\x00-\x1f\x7f]/', '', $str );
 		if ( $regexp )
-			$str = @preg_replace( $regexp, $replace, $str );
+			$str = preg_replace( $regexp, $replace, $str );
 
 		// limit the length of the string
 		if ( function_exists( 'mb_strcut' ) ) {
@@ -203,7 +207,7 @@ class IP_Geo_Block_Logs {
 	}
 
 	private static function get_http_headers() {
-		static $exclusions = array(
+		$exclusions = array(
 			'HTTP_ACCEPT' => TRUE,
 			'HTTP_ACCEPT_CHARSET' => TRUE,
 			'HTTP_ACCEPT_ENCODING' => TRUE,
@@ -370,7 +374,7 @@ class IP_Geo_Block_Logs {
 		// backup logs to text files
 		if ( $dir = apply_filters(
 			IP_Geo_Block::PLUGIN_SLUG . '-backup-dir',
-			$hook, $settings['validation']['backup']
+			$settings['validation']['backup'], $hook
 		) ) {
 			self::backup_log(
 				$hook, $validate, $method, $agent, $heads, $posts, $dir
@@ -402,7 +406,7 @@ class IP_Geo_Block_Logs {
 
 		foreach ( $list as $row ) {
 			$hook = array_shift( $row );
-			$result[ $hook ][] = $row;
+			$result[ $hook ][] = $row; // array_map( 'IP_Geo_Block_Logs::validate_utf8', $row );
 		}
 
 		// must be sanitized just before sending to UA.

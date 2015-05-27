@@ -4,12 +4,12 @@ Donate link:
 Tags: comment, pingback, trackback, spam, IP address, geolocation, xmlrpc, login, wp-admin, ajax, security, brute force
 Requires at least: 3.7
 Tested up to: 4.2.1
-Stable tag: 2.0.8
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-A WordPress plugin that will block any spams, login attempts and malicious 
-access to the admin area posted from outside your nation.
+It blocks any spams, login attempts and malicious access to the admin area 
+posted from outside your nation, and also prevents zero-day exploit.
 
 == Description ==
 
@@ -58,9 +58,8 @@ blocking by country code.
 
 3. Besides blocking by country code, the original new feature '**Z**ero-day 
 **E**xploit **P**revention for wp-admin' (WP-ZEP) is now available to block 
-malicious access to `wp-admin/(admin|admin-ajax|admin-post).php`. It will 
-protect against certain types of attack such as CSRF, SQLi and so on even 
-if you have some 
+malicious access to `wp-admin/*.php`. It will protect against certain types 
+of attack such as CSRF, SQLi and so on even if you have some 
     [vulnerable plugins](https://wpvulndb.com/ "WPScan Vulnerability Database")
 in your site. Because this is an experimental feature, please open an issue at 
     [support forum](https://wordpress.org/support/plugin/ip-geo-block "WordPress &#8250; Support &raquo; IP Geo Block")
@@ -75,7 +74,7 @@ improve this feature. See more details on
 on admin screen, http referer will be eliminated to hide a footprint of your 
 site.
 
-6. Validation logs will be recorded into MySQL data table to analyze posting 
+6. Validation logs will be recorded into MySQL data table to audit posting 
 pattern under the specified condition.
 
 7. Free IP Geolocation database and REST APIs are installed into this plugin 
@@ -162,6 +161,15 @@ All contributions will always be welcome.
 
 * **Admin area**  
     Validate access to `wp-admin/*.php`.
+
+* **Admin ajax/post**  
+    Validate access to `wp-admin/admin-(ajax|post)*.php`.
+
+* **Plugins area**  
+    Validate direct access to plugins. Typically `wp-content/plugins/…/*.php`.
+
+* **Themes area**  
+    Validate direct access to themes. Typically `wp-content/themes/…/*.php`.
 
 * **$_SERVER keys for extra IPs**  
     Additional IP addresses will be validated if some of keys in `$_SERVER` 
@@ -274,6 +282,8 @@ Yes, here is the list of all hooks.
 * `ip-geo-block-login`            : validate IP address at `wp-login.php`.
 * `ip-geo-block-admin`            : validate IP address at `wp-admin/*.php`.
 * `ip-geo-block-admin-actions`    : array of actions for `wp-admin/(admin|admin-ajax|admin-post).php`.
+* `ip-geo-block-admin-pages`      : array of page for `wp-admin/*.php`.
+* `ip-geo-block-wp-content`       : array of name for the plugin/theme directory.
 * `ip-geo-block-backup-dir`       : full path where log files should be saved.
 * `ip-geo-block-maxmind-dir`      : full path where Maxmind GeoLite DB files should be saved.
 * `ip-geo-block-maxmind-zip-ipv4` : url to Maxmind GeoLite DB zip file for IPv4.
@@ -350,6 +360,20 @@ you can rename it to `ip2location` and upload it to `wp-content/`.
 5. **IP Geo Plugin** - Attribution.
 
 == Changelog ==
+
+= 2.1.0 =
+* **New feature:** Expanded the operating range of ZP-ZEP, that includes admin 
+  area, plugins area, themes area. Now it can prevent a direct malicios attack 
+  to the file in plugins and themes area. Please go to the "Validation Settings"
+  on "Settings" tab and check it. Also check my article in 
+  "[Analysis of Attack Vector against WP Plugins](http://tokkonopapa.github.io/WordPress-IP-Geo-Block/article/analysis-attack-vector.html)".
+* **Bug fix:** Fixed the issue that action hook `ip-geo-block-backup-dir` did 
+  not work correctly because the order of argument was mismatched.
+* **Bug fix:** Fixed the issue that a record including utf8 4 bytes character 
+  in its columns was not logged into DB in WordPress 4.2.
+* **Improvement:** Fixed the issue that Referer Suppressor do nothing with a 
+  new element which is added into DOM after DOM ready. The event handler is 
+  now delegated at the `body`.
 
 = 2.0.8 =
 * Fixed an issue that a certain type of attack vector to the admin area (

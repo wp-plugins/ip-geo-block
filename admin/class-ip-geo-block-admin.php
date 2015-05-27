@@ -5,7 +5,7 @@
  * @package   IP_Geo_Block
  * @author    tokkonopapa <tokkonopapa@yahoo.com>
  * @license   GPL-2.0+
- * @link      http://tokkono.cute.coocan.jp/blog/slow/
+ * @link      https://github.com/tokkonopapa
  * @copyright 2013-2015 tokkonopapa
  */
 
@@ -40,6 +40,7 @@ class IP_Geo_Block_Admin {
 
 		// Setup a nonce to validate authentication.
 		add_action( 'admin_enqueue_scripts', array( 'IP_Geo_Block', 'enqueue_nonce' ) );
+		add_filter( 'wp_redirect', array( $this, 'add_admin_nonce' ), 10, 2 );
 
 		// Add the options page and menu item.
 		add_action( 'admin_menu', array( $this, 'setup_admin_screen' ) );
@@ -64,6 +65,25 @@ class IP_Geo_Block_Admin {
 	 */
 	public function load_plugin_textdomain() {
 		load_plugin_textdomain( IP_Geo_Block::TEXT_DOMAIN, FALSE, dirname( IP_GEO_BLOCK_BASE ) . '/languages/' );
+	}
+
+	/**
+	 * Add nonce when redirect into wp-admin area.
+	 *
+	 */
+	public function add_admin_nonce( $location, $status ) {
+		$key = IP_Geo_Block::PLUGIN_SLUG . '-auth-nonce';
+		if ( $nonce = IP_Geo_Block::retrieve_nonce( $key ) ) { // must be sanitized
+			$location = esc_url_raw( add_query_arg(
+				array(
+					$key => false, // delete onece
+					$key => $nonce // add again
+				),
+				$location
+			) );
+		}
+
+		return $location;
 	}
 
 	/**
@@ -233,10 +253,10 @@ class IP_Geo_Block_Admin {
 <div class="wrap">
 	<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
 	<h2 class="nav-tab-wrapper">
-		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=0" class="nav-tab <?php echo $tab == 0 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Settings', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
-		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=1" class="nav-tab <?php echo $tab == 1 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Statistics', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
-		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=4" class="nav-tab <?php echo $tab == 4 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Logs', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
-		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=2" class="nav-tab <?php echo $tab == 2 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Search', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=0" class="nav-tab <?php echo $tab == 0 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Settings',    IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=1" class="nav-tab <?php echo $tab == 1 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Statistics',  IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=4" class="nav-tab <?php echo $tab == 4 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Logs',        IP_Geo_Block::TEXT_DOMAIN ); ?></a>
+		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=2" class="nav-tab <?php echo $tab == 2 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Search',      IP_Geo_Block::TEXT_DOMAIN ); ?></a>
 		<a href="?page=<?php echo IP_Geo_Block::PLUGIN_SLUG; ?>&amp;tab=3" class="nav-tab <?php echo $tab == 3 ? 'nav-tab-active' : ''; ?>"><?php _e( 'Attribution', IP_Geo_Block::TEXT_DOMAIN ); ?></a>
 	</h2>
 	<form method="post" action="options.php"<?php if ( 0 !== $tab ) echo " id=\"", IP_Geo_Block::PLUGIN_SLUG, "-inhibit\""; ?>>
@@ -249,7 +269,7 @@ class IP_Geo_Block_Admin {
 	</form>
 <?php if ( 2 === $tab ) { ?>
 	<div id="ip-geo-block-map"></div>
-<?php } else if ( 3 === $tab ) { ?>
+<?php } elseif ( 3 === $tab ) { ?>
 	<p><?php echo __( 'Thanks for providing these great services for free.', IP_Geo_Block::TEXT_DOMAIN ); ?><br />
 	<?php echo __( '(Most browsers will redirect you to each site without referrer when you click the link.)', IP_Geo_Block::TEXT_DOMAIN ); ?></p>
 	<p>This product includes GeoLite data created by MaxMind, available from <a class="ip-geo-block-link" href="http://www.maxmind.com" rel=noreferrer target=_blank>http://www.maxmind.com</a>.<br />
@@ -276,6 +296,7 @@ class IP_Geo_Block_Admin {
 		  case 1:
 			// Statistics
 			include_once( IP_GEO_BLOCK_PATH . 'admin/includes/tab-statistics.php' );
+			nocache_headers();
 			ip_geo_block_tab_statistics( $this );
 			break;
 
@@ -331,7 +352,7 @@ class IP_Geo_Block_Admin {
 				( FALSE  === $val   && ! empty( $args['value'][ $key ] ) ) ||
 				( is_string( $val ) && ! empty( $args['value'][ $key ] ) )
 			); ?> />
-		<label for="<?php echo $id; ?>" title="<?php echo $args['titles'][ $key ]; ?>"><?php echo $key; ?></label>
+		<label for="<?php echo $id; ?>" title="<?php echo esc_attr( $args['titles'][ $key ] ); ?>"><?php echo $key; ?></label>
 <?php
 				if ( is_string( $val ) ) { ?>
 		<input type="text" class="regular-text code" name="<?php echo $name; ?>" value="<?php echo esc_attr( isset( $args['value'][ $key ] ) ? $args['value'][ $key ] : '' ); ?>"<?php if ( ! isset( $val ) ) disabled( TRUE, TRUE ); ?> />
@@ -365,7 +386,7 @@ class IP_Geo_Block_Admin {
 
 		  case 'checkbox': ?>
 <input type="checkbox" id="<?php echo $id, $sub_id; ?>" name="<?php echo $name, $sub_name; ?>" value="1"<?php checked( esc_attr( $args['value'] ) ); ?> />
-<label for="<?php echo $id, $sub_id; ?>"><?php _e( 'Enable', IP_Geo_Block::TEXT_DOMAIN ); ?></label>
+<label for="<?php echo $id, $sub_id; ?>"><?php echo esc_attr( isset( $args['text'] ) ? $args['text'] : __( 'Enable', IP_Geo_Block::TEXT_DOMAIN ) ); ?></label>
 <?php
 			break;
 
@@ -376,7 +397,6 @@ class IP_Geo_Block_Admin {
 
 		  case 'html':
 			echo "\n", $args['value'], "\n"; // must be sanitized at caller
-			break;
 		}
 
 		if ( ! empty( $args['after'] ) )
@@ -423,7 +443,7 @@ class IP_Geo_Block_Admin {
 					}
 
 					// non-commercial
-					else if ( FALSE === $api ) {
+					elseif ( FALSE === $api ) {
 						if ( isset( $input[ $key ][ $provider ] ) )
 							$output['providers'][ $provider ] = '@';
 						else
@@ -454,7 +474,7 @@ class IP_Geo_Block_Admin {
 			  case 'black_list':
 				$output[ $key ] = isset( $input[ $key ] ) ?
 					sanitize_text_field(
-						@preg_replace( '/[^A-Z,]/', '', strtoupper( $input[ $key ] ) )
+						preg_replace( '/[^A-Z,]/', '', strtoupper( $input[ $key ] ) )
 					) : '';
 				break;
 
@@ -471,7 +491,7 @@ class IP_Geo_Block_Admin {
 					}
 
 					// otherwise if implicit
-					else if ( isset( $input[ $key ] ) ) {
+					elseif ( isset( $input[ $key ] ) ) {
 						$output[ $key ] = is_int( $default[ $key ] ) ?
 							(int)$input[ $key ] :
 							sanitize_text_field( trim( $input[ $key ] ) );
@@ -486,19 +506,19 @@ class IP_Geo_Block_Admin {
 					}
 
 					// for checkbox
-					else if ( is_bool( $default[ $key ][ $sub ] ) ) {
+					elseif ( is_bool( $default[ $key ][ $sub ] ) ) {
 						$output[ $key ][ $sub ] = ! empty( $input[ $key ][ $sub ] );
 					}
 
 					// otherwise if implicit
-					else if ( isset( $input[ $key ][ $sub ] ) ) {
+					elseif ( isset( $input[ $key ][ $sub ] ) ) {
 						$output[ $key ][ $sub ] = is_int( $default[ $key ][ $sub ] ) ?
 							(int)$input[ $key ][ $sub ] :
 							sanitize_text_field(
-								@preg_replace( '/\s/', '', $input[ $key ][ $sub ] )
+								preg_replace( '/\s/', '', $input[ $key ][ $sub ] )
 							);
 						if ( 'proxy' === $sub ) {
-							$output[ $key ][ $sub ] = @preg_replace( '/[^\w,]/', '',
+							$output[ $key ][ $sub ] = preg_replace( '/[^\w,]/', '',
 								strtoupper( $output[ $key ][ $sub ] ) );
 						}
 					}
