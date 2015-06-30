@@ -92,7 +92,9 @@ function ip_geo_block_tab_settings( $context ) {
 		'login'   => __( '<dfn title="Validate access to wp-login.php">Login form</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 		'admin'   => __( '<dfn title="Validate access to wp-admin/*.php">Admin area</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
 	);
+
 	$admin = array_pop( $title );
+	$login = array_pop( $title );
 
 	$field = 'validation';
 	foreach ( $title as $key => $val ) {
@@ -112,6 +114,28 @@ function ip_geo_block_tab_settings( $context ) {
 			)
 		);
 	}
+
+	$key = 'login';
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		$login,
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => array(
+				__( 'Disable', IP_Geo_Block::TEXT_DOMAIN ) => 0,
+				__( 'Block by country (register, lost password)', IP_Geo_Block::TEXT_DOMAIN ) => 2,
+				__( 'Block by country', IP_Geo_Block::TEXT_DOMAIN ) => 1,
+			),
+			'after' => '<div style="display:none" class="ip_geo_block_settings_validation_desc">' . __( 'Registered users can login as membership from anywhere, but the request of new user registration and lost password is blocked by the country code.', IP_Geo_Block::TEXT_DOMAIN ) . '</div>',
+		)
+	);
 
 	$title = array(
 		__( 'Disable',                  IP_Geo_Block::TEXT_DOMAIN ) => 0,
