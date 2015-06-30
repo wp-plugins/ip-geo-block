@@ -16,7 +16,7 @@ var IP_GEO_BLOCK_ZEP = {
 	}
 };
 
-(function ($) {
+(function ($, document) {
 	function parse_uri(uri) {
 		var m = uri ? uri.toString().match(
 			// https://tools.ietf.org/html/rfc3986#appendix-B
@@ -51,11 +51,11 @@ var IP_GEO_BLOCK_ZEP = {
 		}
 
 		var regexp = new RegExp(
-			'/(?:wp-admin/|' + IP_GEO_BLOCK_AUTH.plugins + '|' + IP_GEO_BLOCK_AUTH.themes + ')'
+			'(?:/wp-admin/|' + IP_GEO_BLOCK_AUTH.plugins + '|' + IP_GEO_BLOCK_AUTH.themes + ')'
 		);
 
 		// possibly scheme is `javascript` or path is `;`
-		return (uri.scheme || uri.path || uri.query) && path.match(regexp) ? 1: 0;
+		return (uri.scheme || uri.path || uri.query) && path.match(regexp) ? 1 : 0;
 	}
 
 	function query_args(uri, args) {
@@ -88,9 +88,9 @@ var IP_GEO_BLOCK_ZEP = {
 			// application/x-www-form-urlencoded
 			else {
 				// Behavior of jQuery Ajax
-				// method query query+data data
-				// GET    query query      data
-				// POST   query query      data
+				// method  url  url+data data
+				// GET    query  query   data
+				// POST   query  query   data
 				var uri = parse_uri(settings.url), data;
 				if (typeof settings.data === 'undefined' || uri.query) {
 					data = uri.query ? uri.query.split('&') : [];
@@ -135,10 +135,21 @@ var IP_GEO_BLOCK_ZEP = {
 			});
 
 			$('body').on('submit', 'form', function (event) {
-				var $this = $(this);
+				var $this = $(this),
+				    action = $this.attr('action');
 
 				// if admin area
-				if (is_admin($this.attr('action'), $this.serialize()) === 1) {
+				if (is_admin(action, $this.serialize()) === 1) {
+					var uri = parse_uri(action), data;
+					data = uri.query ? uri.query.split('&') : [];
+					data.push(IP_GEO_BLOCK_ZEP.auth + '=' + encodeURIComponentRFC3986(nonce));
+					$this.attr('action', query_args(uri, data));
+				}
+			});
+
+			$('form').each(function (index) {
+				var $this = $(this);
+				if ('multipart/form-data' === $this.attr('enctype')) {
 					$this.append(
 						'<input type="hidden" name="' + IP_GEO_BLOCK_ZEP.auth + '" value="'
 						+ sanitize(nonce) + '" />'
@@ -147,4 +158,4 @@ var IP_GEO_BLOCK_ZEP = {
 			});
 		}
 	});
-}(jQuery));
+}(jQuery, document));
