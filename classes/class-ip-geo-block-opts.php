@@ -19,14 +19,14 @@ class IP_Geo_Block_Options {
 
 		// settings (should be read on every page that has comment form)
 		'ip_geo_block_settings' => array(
-			'version'         => '1.3.1', // This table version (not package)
+			'version'         => '2.1.0', // This table version (not package)
 			// since version 1.0
 			'providers'       => array(), // List of providers and API keys
 			'comment'         => array(   // Message on the comment form
 			    'pos'         => 0,       // Position (0:none, 1:top, 2:bottom)
 			    'msg'         => NULL,    // Message text on comment form
 			),
-			'matching_rule'   => 0,       // 0:white list, 1:black list
+			'matching_rule'   => -1,      // -1:neither, 0:white list, 1:black list
 			'white_list'      => NULL,    // Comma separeted country code
 			'black_list'      => NULL,    // Comma separeted country code
 			'timeout'         => 5,       // Timeout in second
@@ -119,11 +119,6 @@ class IP_Geo_Block_Options {
 		$key = array_keys( $default );
 
 		if ( FALSE === ( $settings = get_option( $key[0] ) ) ) {
-			// get country code from admin's IP address and set it into white list
-			$name = array( 'ipinfo.io', 'Telize', 'IP-Json' ); shuffle( $name );
-			$tmp = IP_Geo_Block::get_geolocation( NULL, $name, 'get_country' );
-			$default[ $key[0] ]['white_list'] = 'ZZ' !== $tmp['code'] ? $tmp['code'] : NULL;
-
 			// update local goelocation database files
 			$default[ $key[0] ]['ip2location']['ipv4_path'] = $ip2;
 
