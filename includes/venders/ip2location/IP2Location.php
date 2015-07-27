@@ -4,6 +4,10 @@
  * base on IP2Location PHP Module Version: 7.0.0
  * from http://www.ip2location.com/developers/php
  */
+if ( ! extension_loaded('bcmath') ):
+	include_once dirname( __FILE__ ) . '/bcmath.php';
+endif;
+
 /**
  * Copyright (C) 2005-2014 IP2Location.com
  * All Rights Reserved
@@ -393,7 +397,9 @@ class IP2Location {
    * Convert IPv6 into long integer.
    */
   private function ipv6Numeric($ipv6) {
-if (function_exists('gmp_strval')):
+
+if ( extension_loaded('gmp') ):
+
     $ip_n = inet_pton($ipv6);
     $bits = 15;
 
@@ -412,7 +418,9 @@ if (function_exists('gmp_strval')):
       $bits--;
     }
     return gmp_strval(gmp_init($ipv6long, 2), 10);
+
 else:
+
     /**
      * Added by tokkonopapa (code from ip2location.class.php)
      */
@@ -438,6 +446,7 @@ else:
         $ipv6No = bcadd( $ipv6No, bcmul(hexdec($ipSub), bcpow(hexdec('0x10000'), $subLoc)));
     }
     return $ipv6No;
+
 endif;
   }
 

@@ -11,6 +11,8 @@
 
 if ( class_exists( 'IP_Geo_Block' ) ):
 
+define( 'IP_GEO_BLOCK_DEBUG', false );
+
 /**
  * Example 1: Usage of 'ip-geo-block-ip-addr'
  * Use case: Replace ip address for test purpose
@@ -317,7 +319,9 @@ add_filter( 'ip-geo-block-backup-dir', 'my_backup_dir', 10, 2 );
  */
 function my_geolocation() {
 	/**
-	 * get_geolocation( $ip = NULL, $providers = array(), $callback = 'get_county' )
+	 * IP_Geo_Block::get_geolocation(
+	 *    $ip = NULL, $providers = array(), $callback = 'get_country'
+	 * );
 	 *
 	 * @param string $ip IP address / default: $_SERVER['REMOTE_ADDR']
 	 * @param array  $providers list of providers / ex: array( 'ipinfo.io' )

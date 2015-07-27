@@ -214,17 +214,19 @@ class IP_Geo_Block_Admin {
 		if ( version_compare( get_bloginfo( 'version' ), '3.7' ) < 0 )
 			$this->notice[] = __( 'You need WordPress 3.7+.', IP_Geo_Block::TEXT_DOMAIN );
 
-		// Check creation of database table
-		$settings = IP_Geo_Block::get_option( 'settings' );
-		if ( $settings['validation']['reclogs'] ) {
-			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
-			if ( ( $warn = IP_Geo_Block_Logs::diag_table() ) &&
-			     FALSE === IP_Geo_Block_Logs::create_log() )
-				$this->notice[] = $warn;
-		}
+		if ( defined( 'IP_GEO_BLOCK_DEBUG' ) && IP_GEO_BLOCK_DEBUG ) {
+			// Check creation of database table
+			$settings = IP_Geo_Block::get_option( 'settings' );
+			if ( $settings['validation']['reclogs'] ) {
+				require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+				if ( ( $warn = IP_Geo_Block_Logs::diag_table() ) &&
+					 FALSE === IP_Geo_Block_Logs::create_log() )
+					$this->notice[] = $warn;
+			}
 
-		if ( isset( $this->notice ) )
-			add_action( 'admin_notices', array( $this, 'admin_notice' ) );
+			if ( isset( $this->notice ) )
+				add_action( 'admin_notices', array( $this, 'admin_notice' ) );
+		}
 	}
 
 	/**
@@ -275,7 +277,9 @@ class IP_Geo_Block_Admin {
 	<p>This product includes GeoLite data created by MaxMind, available from <a class="ip-geo-block-link" href="http://www.maxmind.com" rel=noreferrer target=_blank>http://www.maxmind.com</a>.<br />
 	This product includes IP2Location open source libraries available from <a class="ip-geo-block-link" href="http://www.ip2location.com" rel=noreferrer target=_blank>http://www.ip2location.com</a>.</p>
 <?php } ?>
+<?php if ( defined( 'IP_GEO_BLOCK_DEBUG' ) && IP_GEO_BLOCK_DEBUG ) { ?>
 	<p><?php echo get_num_queries(); ?> queries. <?php timer_stop(1); ?> seconds. <?php echo memory_get_usage(); ?> bytes.</p>
+<?php } ?>
 </div>
 <?php
 	}
