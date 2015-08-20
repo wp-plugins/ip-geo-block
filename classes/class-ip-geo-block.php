@@ -20,7 +20,7 @@ class IP_Geo_Block {
 	 * Unique identifier for this plugin.
 	 *
 	 */
-	const VERSION = '2.1.2';
+	const VERSION = '2.1.3';
 	const TEXT_DOMAIN = 'ip-geo-block';
 	const PLUGIN_SLUG = 'ip-geo-block';
 	const CACHE_KEY   = 'ip_geo_block_cache';
@@ -38,11 +38,8 @@ class IP_Geo_Block {
 		'statistics' => 'ip_geo_block_statistics',
 	);
 
-	// default content folders
-	public static $content_dir = array(
-		'plugins' => '/wp-content/plugins/',
-		'themes'  => '/wp-content/themes/',
-	);
+	// content folders
+	public static $content_dir;
 
 	// private values
 	private $remote_addr = NULL;
@@ -97,12 +94,14 @@ class IP_Geo_Block {
 			add_action( 'bp_signup_pre_validate', array( $this, 'validate_login' ) );
 		}
 
-		// get content folders (with trailing slash)
-		if ( preg_match( '/(\/[^\/]*\/[^\/]*)$/', parse_url( plugins_url(), PHP_URL_PATH ), $uri ) )
-			self::$content_dir['plugins'] = "$uri[1]/";
-
-		if ( preg_match( '/(\/[^\/]*\/[^\/]*)$/', parse_url( get_theme_root_uri(), PHP_URL_PATH ), $uri ) )
-			self::$content_dir['themes'] = "$uri[1]/";
+		// get content folders (with/without trailing slash)
+		$pos = home_url();
+		self::$content_dir = array(
+			'root'    => untrailingslashit( parse_url( home_url(), PHP_URL_PATH ) ),
+			'admin'   =>   trailingslashit( str_replace( $pos, '', admin_url() ) ),
+			'plugins' =>   trailingslashit( str_replace( $pos, '', plugins_url() ) ),
+			'themes'  =>   trailingslashit( str_replace( $pos, '', get_theme_root_uri() ) ),
+		);
 
 		// wp-admin/(admin.php|admin-apax.php|admin-post.php) @since 2.5.0
 		if ( is_admin() && ( $validate['admin'] || $validate['ajax'] ) )
@@ -126,7 +125,6 @@ class IP_Geo_Block {
 	 *
 	 */
 	public static function get_instance() {
-		// If the single instance hasn't been set, set it now.
 		if ( null == self::$instance )
 			self::$instance = new self;
 
@@ -138,21 +136,17 @@ class IP_Geo_Block {
 	 *
 	 */
 	public static function activate( $network_wide = NULL ) {
-		// upgrade options
+		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
 		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-opts.php' );
-		$settings = IP_Geo_Block_Options::upgrade();
+
+		// kick off a cron job to download database immediately
+		add_action( 'activated_plugin', array( __CLASS__, 'exec_download' ), 10, 2 );
 
 		// create log
-		require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
 		IP_Geo_Block_Logs::create_log();
 
-		// execute to download immediately
-		if ( $settings['update']['auto'] ) {
-			add_action( self::CRON_NAME, array( __CLASS__, 'download_database' ), 10, 1 );
-			self::schedule_cron_job( $settings['update'], $settings['maxmind'], TRUE );
-		}
-
-		return $settings;
+		// upgrade and return new options
+		return IP_Geo_Block_Options::upgrade();
 	}
 
 	/**
@@ -172,15 +166,12 @@ class IP_Geo_Block {
 		$settings = self::get_option( 'settings' );
 
 		if ( $settings['clean_uninstall'] ) {
-			// delete settings options
+			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
+
+			// delete settings options, IP address cache, log
 			delete_option( self::$option_keys['settings'  ] ); // @since 1.2.0
 			delete_option( self::$option_keys['statistics'] ); // @since 1.2.0
-
-			// delete IP address cache
 			delete_transient( self::CACHE_KEY ); // @since 2.8
-
-			// delete log
-			require_once( IP_GEO_BLOCK_PATH . 'classes/class-ip-geo-block-logs.php' );
 			IP_Geo_Block_Logs::delete_log();
 		}
 	}
@@ -209,7 +200,7 @@ class IP_Geo_Block {
 	public static function enqueue_nonce() {
 		if ( is_user_logged_in() ) {
 			$handle = self::PLUGIN_SLUG . '-auth-nonce';
-			$script = plugins_url( 'admin/js/auth-nonce.js', IP_GEO_BLOCK_BASE );
+			$script = plugins_url( 'admin/js/authenticate.js', IP_GEO_BLOCK_BASE );
 			$nonce = array( 'nonce' => wp_create_nonce( $handle ) ) + self::$content_dir;
 			wp_enqueue_script( $handle, $script, array( 'jquery' ), self::VERSION );
 			wp_localize_script( $handle, 'IP_GEO_BLOCK_AUTH', $nonce );
@@ -217,7 +208,7 @@ class IP_Geo_Block {
 	}
 
 	/**
-	 * Overwrite the redirected URL at logout not to be blocked by WP-ZEP.
+	 * Remove the redirecting URL at logout not to be blocked by WP-ZEP.
 	 *
 	 */
 	public function logout_redirect( $uri ) {
@@ -323,7 +314,7 @@ class IP_Geo_Block {
 	 * Validate geolocation by country code.
 	 *
 	 */
-	private function validate_country( $validate, $settings ) {
+	private static function validate_country( $validate, $settings ) {
 		switch ( $settings['matching_rule'] ) {
 		  case 0:
 			$list = $settings['white_list'];
@@ -421,8 +412,7 @@ class IP_Geo_Block {
 		foreach ( explode( ',', $settings['validation']['proxy'] ) as $var ) {
 			if ( isset( $_SERVER[ $var ] ) ) {
 				foreach ( explode( ',', $_SERVER[ $var ] ) as $ip ) {
-					if ( ! in_array( $ip = trim( $ip ), $ips ) &&
-					     filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+					if ( ! in_array( $ip = trim( $ip ), $ips ) && filter_var( $ip, FILTER_VALIDATE_IP ) ) {
 						array_unshift( $ips, $ip );
 					}
 				}
@@ -455,7 +445,7 @@ class IP_Geo_Block {
 
 			// if no 'result' then validate ip address by country
 			if ( empty( $validate['result'] ) )
-				$validate = $this->validate_country( $validate, $settings );
+				$validate = self::validate_country( $validate, $settings );
 
 			// if one of IPs is blocked then stop
 			if ( $blocked = ( 'passed' !== $validate['result'] ) )
@@ -496,7 +486,7 @@ class IP_Geo_Block {
 	 */
 	public function validate_front( $can_access = TRUE ) {
 		$validate = $this->validate_ip( 'comment', self::get_option( 'settings' ), FALSE );
-		return 'passed' !== $validate['result'] ? FALSE : $can_access;
+		return ( 'passed' === $validate['result'] ? $can_access : FALSE );
 	}
 
 	/**
@@ -559,7 +549,7 @@ class IP_Geo_Block {
 
 		  default:
 			// if the request has no page and no action, skip WP-ZEP
-			$zep = $page || $action ? TRUE : FALSE;
+			$zep = ($page || $action) ? TRUE : FALSE;
 			$type = 'admin';
 		}
 
@@ -570,15 +560,12 @@ class IP_Geo_Block {
 
 			// list of request with a specific query to bypass WP-ZEP
 			$list = apply_filters( self::PLUGIN_SLUG . '-bypass-admins', array(
-				// pluploader won't fire an event in "Media Library"
-				'upload-attachment', 'imgedit-preview', 'bp_avatar_upload',
-
-				// jetpack excute multiple redirect, cross domai ajax
-				'jetpack_modules', 'atd_settings',
+				'wp-compression-test', // wp-admin/includes/template.php
+				'upload-attachment', 'imgedit-preview', 'bp_avatar_upload', // pluploader won't fire an event in "Media Library"
+				'jetpack_modules', 'atd_settings', // jetpack: multiple redirect for modules, cross domain ajax for proofreading
 			) );
 
-			// condition of nonce validation
-			// neither $page nor $action is to be bypassed
+			// combination with both vulnerable key and bypass key should be prevented
 			if ( ( $page   || ! in_array( $action, $list, TRUE ) ) &&
 			     ( $action || ! in_array( $page,   $list, TRUE ) ) )
 				add_filter( self::PLUGIN_SLUG . '-admin', array( $this, 'check_nonce' ), 7, 2 );
@@ -670,10 +657,9 @@ class IP_Geo_Block {
 	}
 
 	public function check_auth( $validate, $settings ) {
-		// when anyone can login, authentication should be prior to the validation of
-		// the country code, but the result can't be overwritten if it already exists.
+		// authentication should be prior to the validation by country when anyone can login
 		if ( is_user_logged_in() || ! empty( $this->skip_auth ) )
-			$validate += array( 'result' => 'passed' );
+			$validate += array( 'result' => 'passed' ); // can't overwrite the existing result
 
 		return $validate;
 	}
@@ -721,7 +707,7 @@ class IP_Geo_Block {
 	 * Cron scheduler.
 	 *
 	 */
-	public static function schedule_cron_job( &$update, $db, $immediate = FALSE ) {
+	private static function schedule_cron_job( &$update, $db, $immediate = FALSE ) {
 		wp_clear_scheduled_hook( self::CRON_NAME ); // @since 2.1.0
 
 		if ( $update['auto'] ) {
@@ -748,14 +734,12 @@ class IP_Geo_Block {
 	 *
 	 */
 	public static function download_database( $immediate = FALSE ) {
-		require_once( IP_GEO_BLOCK_PATH . 'includes/download.php' );
+		$settings = self::get_option( 'settings' );
 
 		// download database files
-		$settings = self::get_option( 'settings' );
+		require_once( IP_GEO_BLOCK_PATH . 'includes/download.php' );
 		$res = ip_geo_block_download(
-			$settings['maxmind'],
-			IP_GEO_BLOCK_DB_DIR,
-			self::get_request_headers( $settings )
+			$settings['maxmind'], IP_GEO_BLOCK_DB_DIR, self::get_request_headers( $settings )
 		);
 
 		// re-schedule cron job
@@ -764,17 +748,33 @@ class IP_Geo_Block {
 		// update option settings
 		update_option( self::$option_keys['settings'], $settings );
 
-		// setup country code if it needs to be initialized
-		if ( $immediate && -1 == $settings['matching_rule'] ) {
-			$immediate = self::get_geolocation( NULL, array( 'maxmind', 'ipinfo.io', 'Telize', 'IP-Json' ) );
-			if ( 'ZZ' !== $immediate['code'] ) {
-				$settings['white_list'] = $immediate['code'];
+		if ( $immediate ) {
+			$validate = self::get_geolocation( NULL, array( 'maxmind', 'ipinfo.io', 'Telize', 'IP-Json' ) );
+			$validate = self::validate_country( $validate, $settings );
+
+			// if blocking may happen then disable validation
+			if ( -1 != $settings['matching_rule'] && 'passed' !== $validate['result'] )
+				$settings['matching_rule'] = -1;
+
+			// setup country code if it needs to be initialized
+			if ( -1 == $settings['matching_rule'] && 'ZZ' !== $validate['code'] ) {
 				$settings['matching_rule'] = 0; // white list
-				update_option( self::$option_keys['settings'], $settings );
+				$settings['white_list'] .= ( $settings['white_list'] ? ',' : '' ) . $validate['code'];
 			}
+
+			update_option( self::$option_keys['settings'], $settings );
 		}
 
 		return $res;
+	}
+
+	// Kick off a cron job to download database immediately
+	public static function exec_download( $plugin, $network_activation ) {
+		if ( $plugin === IP_GEO_BLOCK_BASE && current_user_can( 'manage_options' ) ) {
+			$settings = self::get_option( 'settings' );
+			add_action( self::CRON_NAME, array( __CLASS__, 'download_database' ), 10, 1 );
+			self::schedule_cron_job( $settings['update'], $settings['maxmind'], TRUE );
+		}
 	}
 
 }

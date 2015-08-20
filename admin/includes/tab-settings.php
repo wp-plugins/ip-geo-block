@@ -75,151 +75,29 @@ function ip_geo_block_tab_settings( $context ) {
 	);
 
 	/*----------------------------------------*
-	 * Validation settings
+	 * Validation rule settings
 	 *----------------------------------------*/
-	$section = IP_Geo_Block::PLUGIN_SLUG . '-validation';
+	$section = IP_Geo_Block::PLUGIN_SLUG . '-validation-rule';
 	add_settings_section(
 		$section,
-		__( 'Validation settings', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Validation rule settings', IP_Geo_Block::TEXT_DOMAIN ),
 		NULL,
 		$option_slug
 	);
 
-	// same as in tab-accesslog.php
-	$title = array(
-		'comment' => __( '<dfn title="Validate post to wp-comments-post.php">Comment post</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'xmlrpc'  => __( '<dfn title="Validate access to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'login'   => __( '<dfn title="Validate access to wp-login.php">Login form</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		'admin'   => __( '<dfn title="Validate access to wp-admin/*.php">Admin area</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-	);
-
-	$admin = array_pop( $title );
-	$login = array_pop( $title );
-
-	$field = 'validation';
-	foreach ( $title as $key => $val ) {
-		add_settings_field(
-			$option_name . "_${field}_${key}",
-			$title[ $key ],
-			array( $context, 'callback_field' ),
-			$option_slug,
-			$section,
-			array(
-				'type' => 'checkbox',
-				'option' => $option_name,
-				'field' => $field,
-				'sub-field' => $key,
-				'value' => $options[ $field ][ $key ],
-				'text' => __( 'Block by country', IP_Geo_Block::TEXT_DOMAIN ),
-			)
-		);
-	}
-
-	$key = 'login';
+	$key = IP_Geo_Block::get_geolocation();
+	$field = 'ip_country';
 	add_settings_field(
-		$option_name . "_${field}_${key}",
-		$login,
+		$option_name . "_$field",
+		__( 'Your IP address / Country', IP_Geo_Block::TEXT_DOMAIN ),
 		array( $context, 'callback_field' ),
 		$option_slug,
 		$section,
 		array(
-			'type' => 'select',
+			'type' => 'html',
 			'option' => $option_name,
 			'field' => $field,
-			'sub-field' => $key,
-			'value' => $options[ $field ][ $key ],
-			'list' => array(
-				__( 'Disable', IP_Geo_Block::TEXT_DOMAIN ) => 0,
-				__( 'Block by country (register, lost password)', IP_Geo_Block::TEXT_DOMAIN ) => 2,
-				__( 'Block by country', IP_Geo_Block::TEXT_DOMAIN ) => 1,
-			),
-			'after' => '<div style="display:none" class="ip_geo_block_settings_validation_desc">' . __( 'Registered users can login as membership from anywhere, but the request of new user registration and lost password is blocked by the country code.', IP_Geo_Block::TEXT_DOMAIN ) . '</div>',
-		)
-	);
-
-	$title = array(
-		__( 'Disable',                  IP_Geo_Block::TEXT_DOMAIN ) => 0,
-		__( 'Block by country',         IP_Geo_Block::TEXT_DOMAIN ) => 1,
-		__( 'Prevent zero-day exploit', IP_Geo_Block::TEXT_DOMAIN ) => 2,
-	);
-
-	$desc = array(
-		__( '<dfn title="Validate access to %s">%s</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
-		__( 'It will block a malicious request to <code>%s</code> besides the country code. Because this is an experimental feature, please open a new issue at <a class="ip-geo-block-link" href="http://wordpress.org/support/plugin/ip-geo-block" title="WordPress &#8250; Support &raquo; IP Geo Block" target=_blank>support forum</a> if you have any troubles with it.', IP_Geo_Block::TEXT_DOMAIN ),
-		'<div style="display:none" class="ip_geo_block_settings_validation_desc">',
-	);
-
-	$key = 'admin';
-	add_settings_field(
-		$option_name . "_${field}_${key}",
-		$admin,
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'select',
-			'option' => $option_name,
-			'field' => $field,
-			'sub-field' => $key,
-			'value' => $options[ $field ][ $key ],
-			'list' => $title,
-			'after' => $desc[2] . sprintf( $desc[1], 'wp-admin/*.php' ) . '</div>',
-		)
-	);
-
-	$key = 'ajax';
-	add_settings_field(
-		$option_name . "_${field}_${key}",
-		sprintf( $desc[0], 'wp-admin/admin-(ajax|post).php', __( 'Admin ajax/post', IP_Geo_Block::TEXT_DOMAIN ) ),
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'select',
-			'option' => $option_name,
-			'field' => $field,
-			'sub-field' => $key,
-			'value' => $options[ $field ][ $key ],
-			'list' => $title,
-			'after' => $desc[2] . sprintf( $desc[1], 'wp-admin/admin-(ajax|post).php' ) . '</div>',
-		)
-	);
-
-	$key = 'plugins';
-	$val = IP_Geo_Block::$content_dir['plugins'];
-	add_settings_field(
-		$option_name . "_${field}_${key}",
-		sprintf( $desc[0], "$val&hellip;/*.php", __( 'Plugins area', IP_Geo_Block::TEXT_DOMAIN ) ),
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'select',
-			'option' => $option_name,
-			'field' => $field,
-			'sub-field' => $key,
-			'value' => $options[ $field ][ $key ],
-			'list' => $title,
-			'after' => $desc[2] . sprintf( $desc[1], "$val&hellip;/*.php" ) . '</div>',
-		)
-	);
-
-	$key = 'themes';
-	$val = IP_Geo_Block::$content_dir['themes'];
-	add_settings_field(
-		$option_name . "_${field}_${key}",
-		sprintf( $desc[0], "$val&hellip;/*.php", __( 'Themes area', IP_Geo_Block::TEXT_DOMAIN ) ),
-		array( $context, 'callback_field' ),
-		$option_slug,
-		$section,
-		array(
-			'type' => 'select',
-			'option' => $option_name,
-			'field' => $field,
-			'sub-field' => $key,
-			'value' => $options[ $field ][ $key ],
-			'list' => $title,
-			'after' => $desc[2] . sprintf( $desc[1], "$val&hellip;/*.php" ) . '</div>',
+			'value' => esc_html( $key['ip'] . ' / ' . $key['code'] ),
 		)
 	);
 
@@ -319,6 +197,158 @@ function ip_geo_block_tab_settings( $context ) {
 				'500 Internal Server Error' => 500,
 				'503 Service Unavailable' => 503,
 			),
+		)
+	);
+
+	/*----------------------------------------*
+	 * Validation target settings
+	 *----------------------------------------*/
+	$section = IP_Geo_Block::PLUGIN_SLUG . '-validation-target';
+	add_settings_section(
+		$section,
+		__( 'Validation target settings', IP_Geo_Block::TEXT_DOMAIN ),
+		NULL,
+		$option_slug
+	);
+
+	// same as in tab-accesslog.php
+	$title = array(
+		'comment' => __( '<dfn title="Validate post to wp-comments-post.php">Comment post</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'xmlrpc'  => __( '<dfn title="Validate access to xmlrpc.php">XML-RPC</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'login'   => __( '<dfn title="Validate access to wp-login.php">Login form</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		'admin'   => __( '<dfn title="Validate access to wp-admin/*.php">Admin area</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+	);
+
+	$admin = array_pop( $title );
+	$login = array_pop( $title );
+
+	$field = 'validation';
+	foreach ( $title as $key => $val ) {
+		add_settings_field(
+			$option_name . "_${field}_${key}",
+			$title[ $key ],
+			array( $context, 'callback_field' ),
+			$option_slug,
+			$section,
+			array(
+				'type' => 'checkbox',
+				'option' => $option_name,
+				'field' => $field,
+				'sub-field' => $key,
+				'value' => $options[ $field ][ $key ],
+				'text' => __( 'Block by country', IP_Geo_Block::TEXT_DOMAIN ),
+			)
+		);
+	}
+
+	$key = 'login';
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		$login,
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => array(
+				__( 'Disable', IP_Geo_Block::TEXT_DOMAIN ) => 0,
+				__( 'Block by country (register, lost password)', IP_Geo_Block::TEXT_DOMAIN ) => 2,
+				__( 'Block by country', IP_Geo_Block::TEXT_DOMAIN ) => 1,
+			),
+			'after' => '<div style="display:none" class="ip_geo_block_settings_validation_desc">' . __( 'Registered users can login as membership from anywhere, but the request of new user registration and lost password is blocked by the country code.', IP_Geo_Block::TEXT_DOMAIN ) . '</div>',
+		)
+	);
+
+	$title = array(
+		__( 'Disable',                  IP_Geo_Block::TEXT_DOMAIN ) => 0,
+		__( 'Block by country',         IP_Geo_Block::TEXT_DOMAIN ) => 1,
+		__( 'Prevent zero-day exploit', IP_Geo_Block::TEXT_DOMAIN ) => 2,
+	);
+
+	$desc = array(
+		'<div style="display:none" class="ip_geo_block_settings_validation_desc">',
+		__( '<dfn title="Validate access to %s">%s</dfn>', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Besides the country code, it will block malicious assesses to the PHP files under <code>%s</code>.', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Besides the country code, it will block malicious assesses to <code>%s</code>.', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Because this is an experimental feature, please open an issue at <a class="ip-geo-block-link" href="http://wordpress.org/support/plugin/ip-geo-block" title="WordPress &#8250; Support &raquo; IP Geo Block" target=_blank>support forum</a> if you have any troubles with it.</div>', IP_Geo_Block::TEXT_DOMAIN ),
+	);
+
+	$key = 'admin';
+	$val = substr( IP_Geo_Block::$content_dir['admin'], 1 );
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		$admin,
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => $title,
+			'after' => $desc[0] . sprintf( $desc[2], $val ) . $desc[4],
+		)
+	);
+
+	$key = 'ajax';
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		sprintf( $desc[1], "{$val}admin-(ajax|post).php", __( 'Admin ajax/post', IP_Geo_Block::TEXT_DOMAIN ) ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => $title,
+			'after' => $desc[0] . sprintf( $desc[3], "{$val}admin-(ajax|post).php" ) . $desc[4],
+		)
+	);
+
+	$key = 'plugins';
+	$val = substr( IP_Geo_Block::$content_dir['plugins'], 1 );
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		sprintf( $desc[1], "{$val}&hellip;/*.php", __( 'Plugins area', IP_Geo_Block::TEXT_DOMAIN ) ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => $title,
+			'after' => $desc[0] . sprintf( $desc[2], $val ) . $desc[4],
+		)
+	);
+
+	$key = 'themes';
+	$val = substr( IP_Geo_Block::$content_dir['themes'], 1 );
+	add_settings_field(
+		$option_name . "_${field}_${key}",
+		sprintf( $desc[1], "{$val}&hellip;/*.php", __( 'Themes area', IP_Geo_Block::TEXT_DOMAIN ) ),
+		array( $context, 'callback_field' ),
+		$option_slug,
+		$section,
+		array(
+			'type' => 'select',
+			'option' => $option_name,
+			'field' => $field,
+			'sub-field' => $key,
+			'value' => $options[ $field ][ $key ],
+			'list' => $title,
+			'after' => $desc[0] . sprintf( $desc[2], $val ) . $desc[4],
 		)
 	);
 
@@ -561,7 +591,7 @@ function ip_geo_block_tab_settings( $context ) {
 	$field = 'clean_uninstall';
 	add_settings_field(
 		$option_name . "_$field",
-		__( 'Remove settings at uninstallation', IP_Geo_Block::TEXT_DOMAIN ),
+		__( 'Remove all settings at uninstallation', IP_Geo_Block::TEXT_DOMAIN ),
 		array( $context, 'callback_field' ),
 		$option_slug,
 		$section,

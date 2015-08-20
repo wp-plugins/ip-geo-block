@@ -13,7 +13,7 @@
  * Plugin Name:       IP Geo Block
  * Plugin URI:        http://wordpress.org/plugins/ip-geo-block/
  * Description:       It blocks any spams, login attempts and malicious access to the admin area posted from outside your nation, and also prevents zero-day exploit.
- * Version:           2.1.2
+ * Version:           2.1.3
  * Author:            tokkonopapa
  * Author URI:        https://github.com/tokkonopapa/WordPress-IP-Geo-Block
  * Text Domain:       ip-geo-block
@@ -68,3 +68,19 @@ if ( is_admin() ) {
 	require_once( IP_GEO_BLOCK_PATH . 'admin/class-ip-geo-block-admin.php' );
 	add_action( 'plugins_loaded', array( 'IP_Geo_Block_Admin', 'get_instance' ) );
 }
+
+/*----------------------------------------------------------------------------*
+ * Emergent Functionality
+ *----------------------------------------------------------------------------*/
+
+/**
+ * Invalidate blocking behavior in case yourself is locked out.
+ * @note: activate the following code and upload this file via FTP.
+ */ /*
+function ip_geo_block_emergency( $validate ) {
+	$validate['result'] = 'passed';
+	return $validate;
+}
+add_filter( 'ip-geo-block-login', 'ip_geo_block_emergency' );
+add_filter( 'ip-geo-block-admin', 'ip_geo_block_emergency' );
+// */
